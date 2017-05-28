@@ -4,7 +4,8 @@
 <!-- file information -->
 <files>
 <file filter-key="">.\main.c</file>
-<file filter-key="">ZHAL\zhal_gpio.c</file>
+<file filter-key="">ZHAL\ZHAL\zhal_gpio.c</file>
+<file filter-key="">ZHAL\ZHAL\zhal.h</file>
 </files>
 
 <!-- configuration information -->
@@ -44,7 +45,7 @@
 <option name="regvarcache" type="string" change-action="none">Normal</option>
 <option name="reduceopt" type="boolean" change-action="compile">true</option>
 <option name="stdinc" type="string" change-action="compile"></option>
-<option name="usrinc" type="string" change-action="compile"></option>
+<option name="usrinc" type="string" change-action="compile">ZHAL\ZHAL</option>
 <option name="watch" type="boolean" change-action="none">false</option>
 <option name="expmac" type="boolean" change-action="none">true</option>
 </options>

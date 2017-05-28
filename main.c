@@ -5,7 +5,7 @@
 
 
 #include <ez8.h>
-#include "ZHAL\zhal.h"
+#include "zhal.h"
 
 /*
 
