@@ -22,8 +22,8 @@ PC4 - Data
 PC5 - Strobe
 PB0 - CS
 
-PA4 - botão
-PB0 - LED
+PB1 - botão
+PC3 - LED
 */
 
 
@@ -49,6 +49,17 @@ void MCU_INIT () {
     // Crosspoint switch serial
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_C, GPIO_PIN_4 | GPIO_PIN_5, &gpio_config);
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_B, GPIO_PIN_0, &gpio_config);
+
+    // LED
+    gpio_config.Open_Drain = DISABLE;
+    ZHAL_GPIO_Config_Pin(ZHAL_GPIO_C, GPIO_PIN_3, &gpio_config);
+
+    // botão
+    gpio_config.Direction = ZHAL_GPIO_INPUT;
+    gpio_config.Pull_Up = ENABLE;
+    ZHAL_GPIO_Config_Pin(ZHAL_GPIO_B, GPIO_PIN_1, &gpio_config);
+
+
 }
 
 void CROSSPOINT_SWITCH_CONTROL (unsigned char sw, unsigned char status) {
@@ -117,13 +128,10 @@ void CROSSPOINT_SWITCH_CONTROL (unsigned char sw, unsigned char status) {
 
 unsigned char BUTTON () {
     long i;
-    volatile unsigned char btn_value;
     
-    btn_value = PAIN;
-    
-    if ((btn_value & 0x10) == 0) {        
+    if (ZHAL_GPIO_Read_Input(ZHAL_GPIO_B, GPIO_PIN_1) == 0) {
         for (i = 100000; i != 0; i--);
-        if ((PAIN & 0x10) == 0) {
+        if (ZHAL_GPIO_Read_Input(ZHAL_GPIO_B, GPIO_PIN_1) == 0) {
             return (1);
         }        
     }
@@ -147,7 +155,7 @@ void main () {
                 CROSSPOINT_SWITCH_CONTROL(0, 0);
                 CROSSPOINT_SWITCH_CONTROL(1, 1);
                 
-                ZHAL_GPIO_Set_Output(ZHAL_GPIO_B, GPIO_PIN_0);
+                ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_3);
                 
                 MATRIX.Status = 1;
             } else {
@@ -155,7 +163,7 @@ void main () {
                 CROSSPOINT_SWITCH_CONTROL(0, 1);
                 CROSSPOINT_SWITCH_CONTROL(1, 0);
 
-                ZHAL_GPIO_Reset_Output(ZHAL_GPIO_B, GPIO_PIN_0);
+                ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_3);
                 
                 MATRIX.Status = 0;
             }
