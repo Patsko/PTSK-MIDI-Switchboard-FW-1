@@ -9,7 +9,7 @@
 
 /*
 
-PA1 - AX0       OBS: alterado para PA0
+PA1 - AX0
 PA2 - AX1
 PA6 - AX2
 PA7 - AX3
@@ -37,15 +37,17 @@ struct {
 void MCU_INIT () {
     ZHAL_GPIO_Config_t gpio_config = {
         ZHAL_GPIO_OUTPUT,
-        0,
-        ENABLE, // Open drain
+        ZHAL_GPIO_NORMAL,
+        DISABLE,
         DISABLE,
         DISABLE,
         DISABLE
     };
+    ZHAL_UART_Config_t uart_config;
+
 
     // Crosspoint switch addresses
-    ZHAL_GPIO_Config_Pin(ZHAL_GPIO_A, GPIO_PIN_0 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7, &gpio_config);
+    ZHAL_GPIO_Config_Pin(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7, &gpio_config);
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_C, GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7, &gpio_config);
 
     // Crosspoint switch serial
@@ -53,7 +55,6 @@ void MCU_INIT () {
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_B, GPIO_PIN_0, &gpio_config);
 
     // LED
-    gpio_config.Open_Drain = DISABLE;
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_C, GPIO_PIN_2 | GPIO_PIN_3, &gpio_config);
 
     // botão
@@ -61,36 +62,50 @@ void MCU_INIT () {
     gpio_config.Pull_Up = ENABLE;
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_B, GPIO_PIN_1, &gpio_config);
 
+    // Teste serial
+    uart_config.Parity = ZHAL_UART_NO_PARITY;
+    uart_config.CTS = DISABLE;
+    uart_config.StopBitSelect = DISABLE;
+}
 
+
+void WAIT () {
+    uint8_t count = 100;
+
+    while (count != 0) {
+        count--;
+    }
 }
 
 void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char status) {
 
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_5);    // Strobe
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_B, GPIO_PIN_0);    // CS
+    WAIT();
 
     ZHAL_GPIO_Set_Output(ZHAL_GPIO_B, GPIO_PIN_0);    // CS
+    WAIT();
     
-    ZHAL_GPIO_Reset_Output(ZHAL_GPIO_A, GPIO_PIN_0 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7);
+    ZHAL_GPIO_Reset_Output(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7);
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7);
 
     switch (x) {
     case 0:
         break;
     case 1:
-        ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_0);
+        ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_1);
         break;
     case 2:
         ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_2);
         break;
     case 3:
-        ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_0 | GPIO_PIN_2);
+        ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2);
         break;
     case 4:
         ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_6);
         break;
     case 15:
-        ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_0 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7);
+        ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7);
         break;
     }
     switch (y) {
@@ -110,48 +125,23 @@ void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char 
         break;
     }
 
+    WAIT();
 
     if (status == 0) {  // Data
         ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_4);
     } else {
         ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_4);
     }
+    WAIT();
 
     ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_5);
+    WAIT();
 
-    ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_5);
+    ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_5);    // Clock
+    WAIT();
+
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_B, GPIO_PIN_0);    // CS
-
-#if 0
-    PCOUT &= 0xDF;
-    PDOUT &= 0xF7;  // CS and strobe at 0
-    
-    PDOUT |= 0x01;  // CS at 1
-    
-    switch (sw) {
-    case 0: // Sets X0-Y0 switch
-        PAOUT &= 0x3B;
-        PCOUT &= 0x72;
-        break;    
-    case 1: // Sets X1-Y1 switch
-        PAOUT &= 0x3B;
-        PCOUT &= 0x72;
-        PAOUT |= 0x04;
-        PCOUT |= 0x01;
-        break;        
-    }
-    
-    if (status == 0) {  // Data
-        PCOUT &= 0xEF;
-    } else {
-        PCOUT |= 0x10;
-    }
-    
-    PCOUT |= 0x20;  // Strobe at 1    
-    
-    PCOUT &= 0xDF;  // Strobe at 0
-    PDOUT &= 0xF7;  // CS at 0
-#endif
+    WAIT();
 }
 
 
@@ -187,6 +177,8 @@ void main () {
 
             switch (MATRIX.Status) {
             case 0: // bypass - closes X0-Y0
+                CROSSPOINT_SWITCH_CONTROL(15, 0, 0);
+
                 CROSSPOINT_SWITCH_CONTROL(0, 0, 1);
 
                 ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_2 | GPIO_PIN_3);
