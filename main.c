@@ -25,6 +25,10 @@ PB0 - CS
 PB1 - botão
 PC2 - LED1
 PC3 - LED2
+PC1 - LED debug
+
+PA4 - UART RX
+PA5 - UART TX
 
 */
 
@@ -33,6 +37,22 @@ struct {
     unsigned char Status;
 } MATRIX;
 
+uint8_t UART_Driver_Lock_ID = 0;
+
+char Message[] = "Mensagem de teste!\r\n";
+
+uint8_t Debug_status;
+
+
+void UART_Driver_Callback (uint8_t data) {
+
+    switch (Debug_status) {
+    case 0:
+        ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+        Debug_status = 1;
+        break;
+    }
+}
 
 void MCU_INIT () {
     ZHAL_GPIO_Config_t gpio_config = {
@@ -55,7 +75,7 @@ void MCU_INIT () {
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_B, GPIO_PIN_0, &gpio_config);
 
     // LED
-    ZHAL_GPIO_Config_Pin(ZHAL_GPIO_C, GPIO_PIN_2 | GPIO_PIN_3, &gpio_config);
+    ZHAL_GPIO_Config_Pin(ZHAL_GPIO_C, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3, &gpio_config);
 
     // botão
     gpio_config.Direction = ZHAL_GPIO_INPUT;
@@ -66,7 +86,13 @@ void MCU_INIT () {
     uart_config.Parity = ZHAL_UART_NO_PARITY;
     uart_config.CTS = DISABLE;
     uart_config.StopBitSelect = DISABLE;
+    uart_config.BaudRate = 9600;
+
+    ZHAL_UART_Driver_Init (&UART_Driver_Lock_ID, ZHAL_UART_0, &uart_config, UART_Driver_Callback);
+
 }
+
+
 
 
 void WAIT () {
@@ -174,7 +200,7 @@ void main () {
             if (MATRIX.Status > 4) {
                 MATRIX.Status = 0;
             }
-
+#if 0
             switch (MATRIX.Status) {
             case 0: // bypass - closes X0-Y0
                 CROSSPOINT_SWITCH_CONTROL(15, 0, 0);
@@ -220,6 +246,29 @@ void main () {
                 ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_2 | GPIO_PIN_3);
                 break;
             }
+#endif
+
+            switch (Debug_status) {
+            case 0:
+                ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+                ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, Message, sizeof(Message));
+                ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+                break;
+            }
+        }
+
+        ZHAL_UART_Driver ();
+
+
+        switch (Debug_status) {
+        case 0:
+            break;
+        case 1:
+            ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, Message, sizeof(Message));
+            ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+            Debug_status = 0;
+            break;
         }
     }
 }

@@ -289,10 +289,24 @@
 <watch-element expression="ZHAL_Systick" />
 <watch-element expression="*PxADDR_p" />
 <watch-element expression="*PxCTL_p" />
+<watch-element expression="ZHAL_UART_Tx_FIFO" />
+<watch-element expression="*ZHAL_UART_Tx_FIFO.Data" />
+<watch-element expression="U0TXD" />
+<watch-element expression="ZHAL_Callback_fp" />
+<watch-element expression="IRQ0" />
+<watch-element expression="ZHAL_UART_Rx_FIFO_Buffer" />
+<watch-element expression="ZHAL_UART_Rx_FIFO" />
 </watch-elements>
 
 <!-- breakpoint information -->
 <breakpoints>
+<breakpoint temporary="false" enabled="true" >
+<line-number>146</line-number>
+<pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\ZHAL\ZHAL\zhal_uart.c</pathname>
+<address>4668</address>
+<command></command>
+<preserve-type>0</preserve-type>
+</breakpoint>
 </breakpoints>
 
 </project>
