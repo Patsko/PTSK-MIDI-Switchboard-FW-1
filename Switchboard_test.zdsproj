@@ -1,4 +1,4 @@
-<project type="Executable" project-type="Standard" configuration="Debug" created-by="d:5.2.0:13120401" modified-by="d:5.2.0:13120401" ZDSII="ZDS - Z8 Encore! Family 5.2.2 (Build 15082502)">
+<project type="Executable" project-type="Standard" configuration="Debug" created-by="d:5.2.0:13120401" modified-by="d:5.2.0:13120401" ZDSII="ZDS - Z8 Encore! Family 5.2.2 (Build 15082502 with Patches 1,2, and 3)">
 <cpu>Z8F2480XJ</cpu>
 
 <!-- file information -->
@@ -296,14 +296,15 @@
 <watch-element expression="IRQ0" />
 <watch-element expression="ZHAL_UART_Rx_FIFO_Buffer" />
 <watch-element expression="ZHAL_UART_Rx_FIFO" />
+<watch-element expression="TEST.BytesReceived" />
 </watch-elements>
 
 <!-- breakpoint information -->
 <breakpoints>
 <breakpoint temporary="false" enabled="true" >
-<line-number>146</line-number>
+<line-number>147</line-number>
 <pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\ZHAL\ZHAL\zhal_uart.c</pathname>
-<address>4668</address>
+<address>4377</address>
 <command></command>
 <preserve-type>0</preserve-type>
 </breakpoint>

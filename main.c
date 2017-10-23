@@ -5,6 +5,7 @@
 
 
 #include <ez8.h>
+#include <string.h>
 #include "zhal.h"
 
 /*
@@ -37,21 +38,20 @@ struct {
     unsigned char Status;
 } MATRIX;
 
+struct {
+    uint8_t UART_status;
+    char MessageReceived[30];
+    char DataReceived;
+} TEST;
+
+char Message[] = "Loopback test!\r\n";
+
 uint8_t UART_Driver_Lock_ID = 0;
-
-char Message[] = "Mensagem de teste!\r\n";
-
-uint8_t Debug_status;
 
 
 void UART_Driver_Callback (uint8_t data) {
 
-    switch (Debug_status) {
-    case 0:
-        ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
-        Debug_status = 1;
-        break;
-    }
+
 }
 
 void MCU_INIT () {
@@ -171,12 +171,12 @@ void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char 
 }
 
 
-unsigned char BUTTON () {
+unsigned char BUTTON (ZHAL_GPIO_Port_t port, uint8_t pin) {
     long i;
     
-    if (ZHAL_GPIO_Read_Input(ZHAL_GPIO_B, GPIO_PIN_1) == 0) {
+    if (ZHAL_GPIO_Read_Input(port, pin) == 0) {
         for (i = 100000; i != 0; i--);
-        if (ZHAL_GPIO_Read_Input(ZHAL_GPIO_B, GPIO_PIN_1) == 0) {
+        if (ZHAL_GPIO_Read_Input(port, pin) == 0) {
             return (1);
         }        
     }
@@ -185,6 +185,7 @@ unsigned char BUTTON () {
 
 
 void main () {
+    uint8_t i;
 
     ZHAL_Init();
 
@@ -195,7 +196,7 @@ void main () {
     
     while (1){
 
-        if (BUTTON()) {
+        if (BUTTON(ZHAL_GPIO_B, GPIO_PIN_1)) {
             MATRIX.Status++;
             if (MATRIX.Status > 4) {
                 MATRIX.Status = 0;
@@ -248,26 +249,75 @@ void main () {
             }
 #endif
 
-            switch (Debug_status) {
-            case 0:
-                ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
-                ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, Message, sizeof(Message));
-                ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
-                break;
-            }
+            TEST.UART_status = 2;
         }
 
         ZHAL_UART_Driver ();
+#if 0
+        // Very simple message test
+        ZHAL_UART_Driver_Get_Data (UART_Driver_Lock_ID, &TEST.DataReceived, 1);
 
+        switch (TEST.DataReceived) {
+        case 'L':
+        	ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+        	TEST.DataReceived = 0;
+        	break;
+        case 'l':
+        	ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+        	TEST.DataReceived = 0;
+        	break;
+        }
+#endif
 
-        switch (Debug_status) {
+        switch (TEST.UART_status) {
+        // Simple message test
         case 0:
+            if ((ZHAL_UART_Driver_Peek (UART_Driver_Lock_ID, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0x13)) {
+                TEST.UART_status = 1;
+            }
             break;
         case 1:
-            ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+            ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, TEST.MessageReceived, sizeof(TEST.MessageReceived));
+            if (strcmp(TEST.MessageReceived, "LEDON") == 0) {
+                ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+            } else if (strcmp(TEST.MessageReceived, "LEDOF") == 0) {
+            	ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+            }
+
+            for (i = 0; i < sizeof(TEST.MessageReceived); i++) {
+                TEST.MessageReceived[i] = 0;
+            }
+            TEST.DataReceived = 0;
+            TEST.UART_status = 0;
+            break;
+
+        // Loopback test
+        case 2:
+            ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
             ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, Message, sizeof(Message));
             ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
-            Debug_status = 0;
+            TEST.UART_status++;
+            break;
+        case 3:
+        	if ((ZHAL_UART_Driver_Peek (UART_Driver_Lock_ID, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0)) {
+                TEST.UART_status++;
+            }
+            break;
+        case 4:
+            ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, TEST.MessageReceived, sizeof(TEST.MessageReceived));
+            if (strcmp(Message, TEST.MessageReceived) == 0) {  // message received is equal to message sent
+                TEST.UART_status = 2;
+                TEST.DataReceived = 0;
+                for (i = 0; i < sizeof(TEST.MessageReceived); i++) {
+                    TEST.MessageReceived[i] = 0;
+                }
+            } else {
+                ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
+                TEST.UART_status = 5;
+            }
+            break;
+        case 5:
+        default:
             break;
         }
     }
