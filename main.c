@@ -42,6 +42,9 @@ struct {
     uint8_t UART_status;
     char MessageReceived[30];
     char DataReceived;
+    uint8_t MIDI_status;
+    uint32_t MIDI_timeout;
+    uint8_t MIDI_Message[3];
 } TEST;
 
 char Message[] = "Loopback test!\r\n";
@@ -86,7 +89,7 @@ void MCU_INIT () {
     uart_config.Parity = ZHAL_UART_NO_PARITY;
     uart_config.CTS = DISABLE;
     uart_config.StopBitSelect = DISABLE;
-    uart_config.BaudRate = 9600;
+    uart_config.BaudRate = 31250;
 
     ZHAL_UART_Driver_Init (&UART_Driver_Lock_ID, ZHAL_UART_0, &uart_config, UART_Driver_Callback);
 
@@ -249,26 +252,13 @@ void main () {
             }
 #endif
 
+            TEST.MIDI_status = 1;
             TEST.UART_status = 2;
         }
 
         ZHAL_UART_Driver ();
+
 #if 0
-        // Very simple message test
-        ZHAL_UART_Driver_Get_Data (UART_Driver_Lock_ID, &TEST.DataReceived, 1);
-
-        switch (TEST.DataReceived) {
-        case 'L':
-        	ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
-        	TEST.DataReceived = 0;
-        	break;
-        case 'l':
-        	ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_1);
-        	TEST.DataReceived = 0;
-        	break;
-        }
-#endif
-
         switch (TEST.UART_status) {
         // Simple message test
         case 0:
@@ -320,6 +310,31 @@ void main () {
         default:
             break;
         }
+#endif
+
+        switch (TEST.MIDI_status) {
+        case 1:
+            TEST.MIDI_status++;
+            TEST.MIDI_timeout = 100000;
+            TEST.MIDI_Message[0] = 0x90;
+            TEST.MIDI_Message[1] = 0x3C;
+            TEST.MIDI_Message[2] = 0x7F;
+            ZHAL_UART_Driver_Put_Data(UART_Driver_Lock_ID, TEST.MIDI_Message, 3);
+            ZHAL_UART_Driver_Control(UART_Driver_Lock_ID, 1);
+            break;
+        case 2:
+            TEST.MIDI_timeout--;
+            if (TEST.MIDI_timeout == 0) {
+                TEST.MIDI_Message[0] = 0x80;
+                TEST.MIDI_Message[1] = 0x3C;
+                TEST.MIDI_Message[2] = 0x00;
+                ZHAL_UART_Driver_Put_Data(UART_Driver_Lock_ID, TEST.MIDI_Message, 3);
+                ZHAL_UART_Driver_Control(UART_Driver_Lock_ID, 1);
+                TEST.MIDI_status = 0;
+            }
+            break;
+        }
+
     }
 }
 
