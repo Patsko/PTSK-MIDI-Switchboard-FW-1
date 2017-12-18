@@ -42,6 +42,7 @@ struct {
     uint8_t UART_status;
     char MessageReceived[30];
     char DataReceived;
+    uint8_t SizeReceived;
     uint8_t MIDI_status;
     uint32_t MIDI_timeout;
     uint8_t MIDI_Message[3];
@@ -89,7 +90,8 @@ void MCU_INIT () {
     uart_config.Parity = ZHAL_UART_NO_PARITY;
     uart_config.CTS = DISABLE;
     uart_config.StopBitSelect = DISABLE;
-    uart_config.BaudRate = 31250;
+    //uart_config.BaudRate = 31250;
+    uart_config.BaudRate = 38400;
 
     ZHAL_UART_Driver_Init (&UART_Driver_Lock_ID, ZHAL_UART_0, &uart_config, UART_Driver_Callback);
 
@@ -204,7 +206,7 @@ void main () {
             if (MATRIX.Status > 4) {
                 MATRIX.Status = 0;
             }
-#if 0
+#if 1
             switch (MATRIX.Status) {
             case 0: // bypass - closes X0-Y0
                 CROSSPOINT_SWITCH_CONTROL(15, 0, 0);
@@ -251,9 +253,10 @@ void main () {
                 break;
             }
 #endif
-
+#if 0
             TEST.MIDI_status = 1;
             TEST.UART_status = 2;
+#endif
         }
 
         ZHAL_UART_Driver ();
@@ -311,7 +314,7 @@ void main () {
             break;
         }
 #endif
-
+#if 0
         switch (TEST.MIDI_status) {
         case 1:
             TEST.MIDI_status++;
@@ -334,7 +337,29 @@ void main () {
             }
             break;
         }
+#endif
+#if 1
+        switch (TEST.MIDI_status) {
+        case 0:
+            if ((ZHAL_UART_Driver_Peek (UART_Driver_Lock_ID, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0x0D)) {
+                TEST.MIDI_status = 1;
+            }
+            break;
+        case 1:
+            TEST.SizeReceived = ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, TEST.MessageReceived, sizeof(TEST.MessageReceived));
 
+            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, TEST.MessageReceived, TEST.SizeReceived);
+            ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+
+            for (i = 0; i < sizeof(TEST.MessageReceived); i++) {
+                TEST.MessageReceived[i] = 0;
+            }
+            TEST.SizeReceived = 0;
+            TEST.DataReceived = 0;
+            TEST.MIDI_status = 0;
+            break;
+        }
+#endif
     }
 }
 
