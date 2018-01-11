@@ -141,8 +141,7 @@ void SPI_CONFIG () {
 
 
 
-void WAIT () {
-    uint8_t count = 100;
+void WAIT (uint16_t count) {
 
     while (count != 0) {
         count--;
@@ -153,10 +152,10 @@ void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char 
 
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_5);    // Strobe
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_B, GPIO_PIN_0);    // CS
-    WAIT();
+    WAIT(100);
 
     ZHAL_GPIO_Set_Output(ZHAL_GPIO_B, GPIO_PIN_0);    // CS
-    WAIT();
+    WAIT(100);
     
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7);
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_0 | GPIO_PIN_6 | GPIO_PIN_7);
@@ -175,6 +174,9 @@ void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char 
         break;
     case 4:
         ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_6);
+        break;
+    case 14:
+        ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7);
         break;
     case 15:
         ZHAL_GPIO_Set_Output(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7);
@@ -197,23 +199,23 @@ void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char 
         break;
     }
 
-    WAIT();
+    WAIT(100);
 
     if (status == 0) {  // Data
         ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_4);
     } else {
         ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_4);
     }
-    WAIT();
+    WAIT(100);
 
     ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_5);
-    WAIT();
+    WAIT(100);
 
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_5);    // Clock
-    WAIT();
+    WAIT(100);
 
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_B, GPIO_PIN_0);    // CS
-    WAIT();
+    WAIT(100);
 }
 
 
@@ -252,7 +254,7 @@ void main () {
     MCU_INIT(); //rotinas de inicialização
 
     MATRIX.Status = 0;
-    CROSSPOINT_SWITCH_CONTROL(0, 0, 1);
+    CROSSPOINT_SWITCH_CONTROL(0, 0, 1); // bypass - X0 and Y0
     
     while (1){
 
@@ -266,45 +268,68 @@ void main () {
             case 0: // bypass - closes X0-Y0
                 CROSSPOINT_SWITCH_CONTROL(15, 0, 0);
 
-                CROSSPOINT_SWITCH_CONTROL(0, 0, 1);
+                CROSSPOINT_SWITCH_CONTROL(0, 0, 1);     // bypass - closes X0-Y0
 
                 TEST.SPI_data_to_send[0] = 0xFF;
                 TEST.SPI_status = 2;
                 break;
             case 1: // effect 1 - closes X0-Y1 and X2-Y0
-                CROSSPOINT_SWITCH_CONTROL(0, 0, 0);
+                CROSSPOINT_SWITCH_CONTROL(0, 0, 0);     // opens X0-Y0 - in / out
+                CROSSPOINT_SWITCH_CONTROL(15, 0, 1);    // closes X15-Y0 - GND / out
 
-                CROSSPOINT_SWITCH_CONTROL(0, 1, 1);
-                CROSSPOINT_SWITCH_CONTROL(2, 0, 1);
+                CROSSPOINT_SWITCH_CONTROL(14, 1, 0);    // opens X14-Y1 - GND / to eff 1
+                CROSSPOINT_SWITCH_CONTROL(0, 1, 1);     // closes X0-Y1 - in / to eff 1
+
+                WAIT(60000);
+                CROSSPOINT_SWITCH_CONTROL(15, 0, 0);    // opens X15-Y0 - GND / out
+
+                CROSSPOINT_SWITCH_CONTROL(2, 0, 1);     // closes X2-Y0 - from eff 1 / out
 
                 TEST.SPI_data_to_send[0] = 0xFE;
                 TEST.SPI_status = 2;
                 break;
             case 2: // effect 2 - closes X0-Y2 and X3-Y0
-                CROSSPOINT_SWITCH_CONTROL(0, 1, 0);
-                CROSSPOINT_SWITCH_CONTROL(2, 0, 0);
+                CROSSPOINT_SWITCH_CONTROL(2, 0, 0);     // opens X2-Y0 - from eff 1 / out
+                CROSSPOINT_SWITCH_CONTROL(15, 0, 1);    // closes X15-Y0 - GND / out
 
+                CROSSPOINT_SWITCH_CONTROL(14, 2, 0);    // opens X14-Y2 - GND / to eff 2
                 CROSSPOINT_SWITCH_CONTROL(0, 2, 1);
+
+                CROSSPOINT_SWITCH_CONTROL(0, 1, 0);     // opens X0-Y1 - in / to eff 1
+                CROSSPOINT_SWITCH_CONTROL(14, 1, 1);    // closes X14-Y1 - GND / to eff 1
+
+                WAIT(60000);
+                CROSSPOINT_SWITCH_CONTROL(15, 0, 0);    // opens X15-Y0 - GND / out
+
                 CROSSPOINT_SWITCH_CONTROL(3, 0, 1);
 
                 TEST.SPI_data_to_send[0] = 0xFD;
                 TEST.SPI_status = 2;
                 break;
             case 3: // effect 3 - closes X0-Y3 and X4-Y0
-                CROSSPOINT_SWITCH_CONTROL(0, 2, 0);
-                CROSSPOINT_SWITCH_CONTROL(3, 0, 0);
+                CROSSPOINT_SWITCH_CONTROL(3, 0, 0);     // opens X3-Y0 - from eff 2 / out
+                CROSSPOINT_SWITCH_CONTROL(15, 0, 1);    // closes X15-Y0 - GND / out
 
+                CROSSPOINT_SWITCH_CONTROL(14, 3, 0);    // opens X14-Y3 - GND / to eff 3
                 CROSSPOINT_SWITCH_CONTROL(0, 3, 1);
+
+                CROSSPOINT_SWITCH_CONTROL(0, 2, 0);
+                CROSSPOINT_SWITCH_CONTROL(14, 2, 1);    // closes X14-Y2 - GND / to eff 2
+
+                WAIT(60000);
+                CROSSPOINT_SWITCH_CONTROL(15, 0, 0);    // opens X15-Y0 - GND / out
+
                 CROSSPOINT_SWITCH_CONTROL(4, 0, 1);
 
                 TEST.SPI_data_to_send[0] = 0xFC;
                 TEST.SPI_status = 2;
                 break;
             case 4: // mute - closes X15-Y0
-                CROSSPOINT_SWITCH_CONTROL(0, 3, 0);
-                CROSSPOINT_SWITCH_CONTROL(4, 0, 0);
-
+                CROSSPOINT_SWITCH_CONTROL(4, 0, 0);     // opens X4-Y0 - from eff 3 / out
                 CROSSPOINT_SWITCH_CONTROL(15, 0, 1);
+
+                CROSSPOINT_SWITCH_CONTROL(0, 3, 0);     // opens X0-Y3 - in / to eff 3
+                CROSSPOINT_SWITCH_CONTROL(14, 3, 1);    // closes X14-Y3 - GND / to eff 3
 
                 TEST.SPI_data_to_send[0] = 0xFF;
                 TEST.SPI_status = 2;
