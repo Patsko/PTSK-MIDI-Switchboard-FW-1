@@ -52,22 +52,24 @@ struct {
     uint8_t SPI_data_to_send[10];
 } TEST;
 
+
+ZHAL_UART_Driver_t UART_Driver_Handle;
+ZHAL_SPI_Driver_t SPI_Driver_Handle;
+
 char Message[] = "Loopback test!\r\n";
 
-uint8_t UART_Driver_Lock_ID = 0;
-uint8_t SPI_Driver_Lock_ID = 0;
 
 struct {
     uint32_t Timeout;
     uint8_t Status;
 } BUTTON;
 
-void UART_Driver_Callback (uint8_t data) {
+void UART_Driver_Callback (void) {
 
 
 }
 
-void SPI_Driver_Callback (uint8_t data) {
+void SPI_Driver_Callback (void) {
     ZHAL_GPIO_Config_t gpio_config = {
         ZHAL_GPIO_OUTPUT,
         ZHAL_GPIO_NORMAL,
@@ -82,7 +84,7 @@ void SPI_Driver_Callback (uint8_t data) {
     if ((TEST.SPI_status == 4) || (TEST.SPI_status == 7)) { // if it is writing to memory or has written to it
         TEST.SPI_status++;
     } else {
-        ZHAL_SPI_Driver_Close (SPI_Driver_Lock_ID, ZHAL_SPI_0);
+        ZHAL_SPI_Driver_Close(&SPI_Driver_Handle);
         // Crosspoint switch serial
         ZHAL_GPIO_Config_Pin(ZHAL_GPIO_C, GPIO_PIN_4 | GPIO_PIN_5, &gpio_config);
     }
@@ -99,7 +101,6 @@ void MCU_INIT () {
         DISABLE,
         DISABLE
     };
-    ZHAL_UART_Config_t uart_config;
 
     // Crosspoint switch addresses
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7, &gpio_config);
@@ -118,28 +119,20 @@ void MCU_INIT () {
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_B, GPIO_PIN_1, &gpio_config);
 
     // Teste serial
-    uart_config.Parity = ZHAL_UART_NO_PARITY;
-    uart_config.CTS = DISABLE;
-    uart_config.StopBitSelect = DISABLE;
-    //uart_config.BaudRate = 31250;
-    uart_config.BaudRate = 38400;
+    UART_Driver_Handle.BaudRate = 38400;
+    UART_Driver_Handle.TxCallback = UART_Driver_Callback;
 
-    ZHAL_UART_Driver_Init (&UART_Driver_Lock_ID, ZHAL_UART_0, &uart_config, UART_Driver_Callback);
+    ZHAL_UART_Driver_Init(&UART_Driver_Handle);
 
 }
 
 
 void SPI_CONFIG () {
 
-    ZHAL_SPI_Config_t spi_config;
+    SPI_Driver_Handle.BaudRate = 50000;
+    SPI_Driver_Handle.TxCallback = SPI_Driver_Callback;
 
-    spi_config.Mode = ZHAL_SPI_MODE_DEFAULT;
-    spi_config.MasterSlave = ZHAL_SPI_MODE_MASTER;
-    spi_config.PolarityPhase = ZHAL_SPI_POL_PHASE_0;
-    spi_config.WiredOR = DISABLE;
-    spi_config.BaudRate = 50000;
-
-    ZHAL_SPI_Driver_Init (&SPI_Driver_Lock_ID, ZHAL_SPI_0, &spi_config, SPI_Driver_Callback);
+    ZHAL_SPI_Driver_Init(&SPI_Driver_Handle);
 
 }
 
@@ -319,19 +312,17 @@ void main () {
 #endif
         }
 
-        ZHAL_UART_Driver ();
-        ZHAL_SPI_Driver ();
 
 #if 0
         switch (TEST.UART_status) {
         // Simple message test
         case 0:
-            if ((ZHAL_UART_Driver_Peek (UART_Driver_Lock_ID, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0x13)) {
+            if ((ZHAL_UART_Driver_Peek (&UART_Driver_Handle, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0x13)) {
                 TEST.UART_status = 1;
             }
             break;
         case 1:
-            ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, TEST.MessageReceived, sizeof(TEST.MessageReceived));
+            ZHAL_UART_Driver_Get_Data(&UART_Driver_Handle, TEST.MessageReceived, sizeof(TEST.MessageReceived));
             if (strcmp(TEST.MessageReceived, "LEDON") == 0) {
                 ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
             } else if (strcmp(TEST.MessageReceived, "LEDOF") == 0) {
@@ -348,17 +339,17 @@ void main () {
         // Loopback test
         case 2:
             ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_1);
-            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, Message, sizeof(Message));
-            ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+            ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, Message, sizeof(Message));
+            ZHAL_UART_Driver_Send_Data (&UART_Driver_Handle);
             TEST.UART_status++;
             break;
         case 3:
-        	if ((ZHAL_UART_Driver_Peek (UART_Driver_Lock_ID, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0)) {
+        	if ((ZHAL_UART_Driver_Peek (&UART_Driver_Handle, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0)) {
                 TEST.UART_status++;
             }
             break;
         case 4:
-            ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, TEST.MessageReceived, sizeof(TEST.MessageReceived));
+            ZHAL_UART_Driver_Get_Data(&UART_Driver_Handle, TEST.MessageReceived, sizeof(TEST.MessageReceived));
             if (strcmp(Message, TEST.MessageReceived) == 0) {  // message received is equal to message sent
                 TEST.UART_status = 2;
                 TEST.DataReceived = 0;
@@ -384,8 +375,8 @@ void main () {
             TEST.MIDI_Message[0] = 0x90;
             TEST.MIDI_Message[1] = 0x3C;
             TEST.MIDI_Message[2] = 0x7F;
-            ZHAL_UART_Driver_Put_Data(UART_Driver_Lock_ID, TEST.MIDI_Message, 3);
-            ZHAL_UART_Driver_Control(UART_Driver_Lock_ID, 1);
+            ZHAL_UART_Driver_Put_Data(&UART_Driver_Handle, TEST.MIDI_Message, 3);
+            ZHAL_UART_Driver_Send_Data(&UART_Driver_Handle);
             break;
         case 2:
             TEST.MIDI_timeout--;
@@ -393,8 +384,8 @@ void main () {
                 TEST.MIDI_Message[0] = 0x80;
                 TEST.MIDI_Message[1] = 0x3C;
                 TEST.MIDI_Message[2] = 0x00;
-                ZHAL_UART_Driver_Put_Data(UART_Driver_Lock_ID, TEST.MIDI_Message, 3);
-                ZHAL_UART_Driver_Control(UART_Driver_Lock_ID, 1);
+                ZHAL_UART_Driver_Put_Data(&UART_Driver_Handle, TEST.MIDI_Message, 3);
+                ZHAL_UART_Driver_Send_Data(&UART_Driver_Handle);
                 TEST.MIDI_status = 0;
             }
             break;
@@ -404,15 +395,15 @@ void main () {
         // MIDI loopback test - receives data and resends it
         switch (TEST.MIDI_status) {
         case 0:
-            if ((ZHAL_UART_Driver_Peek (UART_Driver_Lock_ID, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0x0D)) {
+            if ((ZHAL_UART_Driver_Peek (&UART_Driver_Handle, &TEST.DataReceived) != 0) && (TEST.DataReceived == 0x0D)) {
                 TEST.MIDI_status = 1;
             }
             break;
         case 1:
-            TEST.SizeReceived = ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, TEST.MessageReceived, sizeof(TEST.MessageReceived));
+            TEST.SizeReceived = ZHAL_UART_Driver_Get_Data(&UART_Driver_Handle, TEST.MessageReceived, sizeof(TEST.MessageReceived));
 
-            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, TEST.MessageReceived, TEST.SizeReceived);
-            ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+            ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, TEST.MessageReceived, TEST.SizeReceived);
+            ZHAL_UART_Driver_Send_Data(&UART_Driver_Handle);
 
             for (i = 0; i < sizeof(TEST.MessageReceived); i++) {
                 TEST.MessageReceived[i] = 0;
@@ -431,29 +422,29 @@ void main () {
             ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_3);
             SPI_CONFIG();
 
-            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "Start! SPI stat:", 16);
+            ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, "Start! SPI stat:", 16);
             TEST.SPI_debug = ESPISTAT;
             for (i = 0x80; i != 0; i >>= 1) {
                 if ((TEST.SPI_debug & i) != 0) {
-                    ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "1", 1);
+                    ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, "1", 1);
                 } else {
-                    ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "0", 1);
+                    ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, "0", 1);
                 }
             }
-            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "State:", 6);
+            ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, "State:", 6);
             TEST.SPI_debug = ESPISTATE;
             for (i = 0x80; i != 0; i >>= 1) {
                 if ((TEST.SPI_debug & i) != 0) {
-                    ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "1", 1);
+                    ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, "1", 1);
                 } else {
-                    ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "0", 1);
+                    ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, "0", 1);
                 }
             }
-            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "\n", 1);
-            ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+            ZHAL_UART_Driver_Put_Data(&UART_Driver_Handle, "\n", 1);
+            ZHAL_UART_Driver_Send_Data(&UART_Driver_Handle);
 
-            ZHAL_SPI_Driver_Put_Data (SPI_Driver_Lock_ID, TEST.SPI_data_to_send, 1);
-            ZHAL_SPI_Driver_Control (SPI_Driver_Lock_ID, 1);
+            ZHAL_SPI_Driver_Put_Data(&SPI_Driver_Handle, TEST.SPI_data_to_send, 1);
+            ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Handle));
 
             TEST.SPI_status++;
             break;
@@ -461,10 +452,10 @@ void main () {
             break;
         case 3:
             ZHAL_GPIO_Set_Output(ZHAL_GPIO_C, GPIO_PIN_3);
-            ZHAL_SPI_Driver_Close (SPI_Driver_Lock_ID, ZHAL_SPI_0);
+            ZHAL_SPI_Driver_Close(&SPI_Driver_Handle);
 
-            ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, "Message sent!\n", 14);
-            ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+            ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, "Message sent!\n", 14);
+            ZHAL_UART_Driver_Send_Data(&UART_Driver_Handle);
 
             TEST.SPI_status = 0;
             break;
@@ -477,11 +468,11 @@ void main () {
         case 0:
 #if 0
             // write to SPI data from UART
-            if (ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, &TEST.DataReceived, 1) != 0) {
+            if (ZHAL_UART_Driver_Get_Data(&UART_Driver_Handle, &TEST.DataReceived, 1) != 0) {
                 TEST.SPI_status = 1;
             }
 #endif
-            if (ZHAL_UART_Driver_Get_Data(UART_Driver_Lock_ID, &TEST.DataReceived, 1) != 0) {
+            if (ZHAL_UART_Driver_Get_Data(&UART_Driver_Handle, &TEST.DataReceived, 1) != 0) {
                 if (TEST.DataReceived == 'W') { // write to memory
                     TEST.SPI_status = 3;
                 } else if (TEST.DataReceived == 'R') {  // read from memory
@@ -493,8 +484,8 @@ void main () {
             ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_3);
             SPI_CONFIG();
 
-            ZHAL_SPI_Driver_Put_Data (SPI_Driver_Lock_ID, &TEST.DataReceived, 1);
-            ZHAL_SPI_Driver_Control (SPI_Driver_Lock_ID, 1);
+            ZHAL_SPI_Driver_Put_Data(&SPI_Driver_Handle, &TEST.DataReceived, 1);
+            ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Handle);
 
             TEST.SPI_status = 0;
             break;
@@ -502,8 +493,8 @@ void main () {
             ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_3);
             SPI_CONFIG();
 
-            ZHAL_SPI_Driver_Put_Data (SPI_Driver_Lock_ID, TEST.SPI_data_to_send, 1);
-            ZHAL_SPI_Driver_Control (SPI_Driver_Lock_ID, 1);
+            ZHAL_SPI_Driver_Put_Data(&SPI_Driver_Handle, TEST.SPI_data_to_send, 1);
+            ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Handle);
 
             TEST.SPI_status = 0;
 
@@ -513,8 +504,8 @@ void main () {
             SPI_CONFIG();
 
             TEST.SPI_data_to_send[0] = 0x06;    // WREN
-            ZHAL_SPI_Driver_Put_Data (SPI_Driver_Lock_ID, TEST.SPI_data_to_send, 1);
-            ZHAL_SPI_Driver_Control (SPI_Driver_Lock_ID, 1);
+            ZHAL_SPI_Driver_Put_Data(&SPI_Driver_Handle, TEST.SPI_data_to_send, 1);
+            ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Handle);
 
             TEST.SPI_status = 4;
             break;
@@ -530,8 +521,8 @@ void main () {
             TEST.SPI_data_to_send[4] = 0x02;    // data
             TEST.SPI_data_to_send[5] = 0x03;    // data
             TEST.SPI_data_to_send[6] = 0x04;    // data
-            ZHAL_SPI_Driver_Put_Data (SPI_Driver_Lock_ID, TEST.SPI_data_to_send, 7);
-            ZHAL_SPI_Driver_Control (SPI_Driver_Lock_ID, 1);
+            ZHAL_SPI_Driver_Put_Data(&SPI_Driver_Handle, TEST.SPI_data_to_send, 7);
+            ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Handle);
 
             TEST.SPI_status = 0;
             break;
@@ -546,8 +537,8 @@ void main () {
             TEST.SPI_data_to_send[4] = 0xFF;    // dummy
             TEST.SPI_data_to_send[5] = 0xFF;    // dummy
             TEST.SPI_data_to_send[6] = 0xFF;    // dummy
-            ZHAL_SPI_Driver_Put_Data (SPI_Driver_Lock_ID, TEST.SPI_data_to_send, 7);
-            ZHAL_SPI_Driver_Control (SPI_Driver_Lock_ID, 1);
+            ZHAL_SPI_Driver_Put_Data(&SPI_Driver_Handle, TEST.SPI_data_to_send, 7);
+            ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Handle);
 
             TEST.SPI_status = 7;
             break;
@@ -556,14 +547,14 @@ void main () {
         case 8:
             // send all data to UART
 
-            i = ZHAL_SPI_Driver_Peek (SPI_Driver_Lock_ID, NULL);  // get the number of bytes available
+            i = ZHAL_SPI_Driver_Peek(&SPI_Driver_Handle, NULL);  // get the number of bytes available
 
             while (i > 0) {
-                ZHAL_SPI_Driver_Get_Data (SPI_Driver_Lock_ID, &data, 1);
-                ZHAL_UART_Driver_Put_Data (UART_Driver_Lock_ID, &data, 1);
+                ZHAL_SPI_Driver_Get_Data(&SPI_Driver_Handle, &data, 1);
+                ZHAL_UART_Driver_Put_Data (&UART_Driver_Handle, &data, 1);
                 i--;
             }
-            ZHAL_UART_Driver_Control (UART_Driver_Lock_ID, 1);
+            ZHAL_UART_Driver_Send_Data(&UART_Driver_Handle);
 
             TEST.SPI_status = 0;
             break;
