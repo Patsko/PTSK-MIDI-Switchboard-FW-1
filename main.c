@@ -53,8 +53,8 @@ struct {
 } TEST;
 
 
-ZHAL_UART_Driver_t UART_Driver_Handle;
-ZHAL_SPI_Driver_t SPI_Driver_Handle;
+ZHAL_UART_Driver_Handle_t UART_Driver_Handle = {FALSE, 0};
+ZHAL_SPI_Driver_Handle_t SPI_Driver_Handle = {FALSE, 0};
 
 char Message[] = "Loopback test!\r\n";
 
@@ -101,6 +101,11 @@ void MCU_INIT () {
         DISABLE,
         DISABLE
     };
+    ZHAL_UART_Driver_Config_t uart_config = {
+        38400,
+        UART_Driver_Callback,
+        UART_Driver_Callback
+    };
 
     // Crosspoint switch addresses
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_A, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_6 | GPIO_PIN_7, &gpio_config);
@@ -118,21 +123,20 @@ void MCU_INIT () {
     gpio_config.Pull_Up = ENABLE;
     ZHAL_GPIO_Config_Pin(ZHAL_GPIO_B, GPIO_PIN_1, &gpio_config);
 
-    // Teste serial
-    UART_Driver_Handle.BaudRate = 38400;
-    UART_Driver_Handle.TxCallback = UART_Driver_Callback;
-
-    ZHAL_UART_Driver_Init(&UART_Driver_Handle);
+    ZHAL_UART_Driver_Init(&UART_Driver_Handle, &uart_config);
 
 }
 
 
 void SPI_CONFIG () {
 
-    SPI_Driver_Handle.BaudRate = 50000;
-    SPI_Driver_Handle.TxCallback = SPI_Driver_Callback;
+    ZHAL_SPI_Driver_Config_t spi_config = {
+        50000,
+        SPI_Driver_Callback,
+        SPI_Driver_Callback
+    };
 
-    ZHAL_SPI_Driver_Init(&SPI_Driver_Handle);
+    ZHAL_SPI_Driver_Init(&SPI_Driver_Handle, &spi_config);
 
 }
 
