@@ -14,6 +14,7 @@
 <file filter-key="">ZHAL\ZHAL\zhal_uart_driver.c</file>
 <file filter-key="">ZHAL\ZHAL\zhal_spi.c</file>
 <file filter-key="">ZHAL\ZHAL\zhal_spi_driver.c</file>
+<file filter-key="">.\sw_timer.c</file>
 </files>
 
 <!-- configuration information -->
@@ -300,6 +301,8 @@
 <watch-element expression="ZHAL_UART_Rx_FIFO" />
 <watch-element expression="TEST.BytesReceived" />
 <watch-element expression="TEST.SPI_status" />
+<watch-element expression="TEST" />
+<watch-element expression="i" />
 </watch-elements>
 
 <!-- breakpoint information -->
@@ -307,7 +310,14 @@
 <breakpoint temporary="false" enabled="true" >
 <line-number>147</line-number>
 <pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\ZHAL\ZHAL\zhal_uart.c</pathname>
-<address>4772</address>
+<address>5156</address>
+<command></command>
+<preserve-type>0</preserve-type>
+</breakpoint>
+<breakpoint temporary="false" enabled="true" >
+<line-number>604</line-number>
+<pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\main.c</pathname>
+<address>2576</address>
 <command></command>
 <preserve-type>0</preserve-type>
 </breakpoint>
