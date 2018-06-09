@@ -30,7 +30,7 @@ typedef struct {
 
 void SW_Timer_Init (SW_Timer_t * timer_p, uint16_t ticks);
 bool_t SW_Timer_Is_Timed_Out (SW_Timer_t * timer_p);
-void SW_Timer_Blocking_Delay (uint16_t ticks_to_wait);
+void SW_Timer_Blocking_Delay_1ms (uint16_t ticks_to_wait);
 
 
 #endif // SW_TIMER_H

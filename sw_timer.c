@@ -47,7 +47,7 @@ bool_t SW_Timer_Is_Timed_Out (SW_Timer_t * timer_p) {
  * Timer_Blocking_Delay
  * Blocking delay
  */
-void SW_Timer_Blocking_Delay (uint16_t ticks_to_wait) {
+void SW_Timer_Blocking_Delay_1ms (uint16_t ticks_to_wait) {
     uint16_t final_tick;
 
     final_tick = ticks_to_wait + ZHAL_Systick_Get_Tick();

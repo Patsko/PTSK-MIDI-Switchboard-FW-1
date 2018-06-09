@@ -33,6 +33,15 @@
 #define BTN6_PIN        GPIO_PIN_0
 #endif
 
+#define SPI_MISO_PORT   ZHAL_GPIO_C
+#define SPI_MISO_PIN    GPIO_PIN_1
+
+#define SPI_MOSI_PORT   ZHAL_GPIO_C
+#define SPI_MOSI_PIN    GPIO_PIN_4
+
+#define SPI_SCK_PORT    ZHAL_GPIO_C
+#define SPI_SCK_PIN     GPIO_PIN_5
+
 #define CS_SWITCH_PORT  ZHAL_GPIO_B
 #define CS_SWITCH_PIN   GPIO_PIN_0
 

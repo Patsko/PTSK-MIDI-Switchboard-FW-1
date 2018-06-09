@@ -15,6 +15,9 @@
 <file filter-key="">ZHAL\ZHAL\zhal_spi.c</file>
 <file filter-key="">ZHAL\ZHAL\zhal_spi_driver.c</file>
 <file filter-key="">.\sw_timer.c</file>
+<file filter-key="">.\keypad.c</file>
+<file filter-key="">.\output_expander.c</file>
+<file filter-key="">.\crosspoint_switch.c</file>
 </files>
 
 <!-- configuration information -->
