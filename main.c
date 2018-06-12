@@ -11,6 +11,7 @@
 #include "bsp.h"
 #include "sw_timer.h"
 #include "output_expander.h"
+#include "memory.h"
 
 
 void SPI_Driver_Callback (void);
@@ -61,6 +62,8 @@ struct {
     uint8_t UART_Rx_count;
     uint8_t UART_inserted_bytes;
     uint8_t Flag;
+
+    uint8_t SPI_Debug[ZHAL_SPI_FIFO_SIZE];
 
     uint8_t TimerStatus;
     SW_Timer_t Timer;
@@ -193,6 +196,7 @@ void UART_TEST () {
 void SPI_TEST () {
     uint8_t i;
     uint8_t data;
+    uint8_t data_buf[4];
 
     // Send byte through SPI when button is pressed
     switch (TEST.SPI_status) {
@@ -258,6 +262,7 @@ void SPI_TEST () {
         break;
 
     case 8: // FRAM read
+#if 1
         TEST.SPI_data_to_send[0] = 0x03;    // READ
         TEST.SPI_data_to_send[1] = 0x00;    // addr high
         TEST.SPI_data_to_send[2] = 0x00;    // addr low
@@ -268,10 +273,49 @@ void SPI_TEST () {
 
         ZHAL_SPI_Driver_Put_Data(TEST.SPI_data_to_send, 7);
         ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Memory);
+#else
+        if (Memory_Read_Start(4, 0x00)) {
 
-        TEST.SPI_status++;
+            ZHAL_UART_Driver_Put_Data ("Read started\n", sizeof("Read started\n"));
+            ZHAL_UART_Driver_Send_Data();
+            TEST.SPI_status++;
+        }
+#endif
         break;
     case 9:
+#if 0
+        if (ZHAL_UART_Driver_Peek(&data) != 0) {
+            if (data == 'T') {
+                ZHAL_UART_Driver_Get_Data(&data, 1);
+
+                ZHAL_UART_Driver_Put_Data ("\nTX: ", 5);
+                data = Memory_Get_Status(0);
+                ZHAL_UART_Driver_Put_Data (&data, 1);
+                SPI_Driver_Get_Status (3, &TEST.SPI_Debug);
+                ZHAL_UART_Driver_Put_Data (&TEST.SPI_Debug, ZHAL_SPI_FIFO_SIZE);
+                ZHAL_UART_Driver_Send_Data();
+            } else if (data == 'R') {
+                ZHAL_UART_Driver_Get_Data(&data, 1);
+
+                ZHAL_UART_Driver_Put_Data ("\nRX: ", 5);
+                data = Memory_Get_Status(0);
+                ZHAL_UART_Driver_Put_Data (&data, 1);
+                SPI_Driver_Get_Status (4, &TEST.SPI_Debug);
+                ZHAL_UART_Driver_Put_Data (&TEST.SPI_Debug, ZHAL_SPI_FIFO_SIZE);
+                ZHAL_UART_Driver_Send_Data();
+            }
+        }
+
+        if (Memory_Read_Data(&data_buf)) {
+            ZHAL_UART_Driver_Put_Data ("Read finished\n", sizeof("Read finished\n"));
+            ZHAL_UART_Driver_Send_Data();
+
+            ZHAL_UART_Driver_Put_Data (&data_buf, 4);
+            ZHAL_UART_Driver_Send_Data();
+
+            TEST.SPI_status = 0;
+        }
+#endif
         break;
     case 10:
         // send all data to UART
@@ -331,18 +375,30 @@ void TIMER_TEST () {
     switch (TEST.TimerStatus) {
     case 0:
         data = 0;
-        ZHAL_UART_Driver_Put_Data ("TIMER 0\n", sizeof("TIMER 0\n"));
+        ZHAL_UART_Driver_Put_Data ("\nMem stat: ", sizeof("\nMem stat: "));
+        data = Memory_Get_Status(0);
+        ZHAL_UART_Driver_Put_Data (&data, 1);
+        data = SPI_Driver_Get_Status (1, NULL);
+        ZHAL_UART_Driver_Put_Data (&data, 1);
+        data = SPI_Driver_Get_Status (2, NULL);
+        ZHAL_UART_Driver_Put_Data (&data, 1);
         ZHAL_UART_Driver_Send_Data();
-        Output_Expander_Pin(1, 1);
+        //Output_Expander_Pin(1, 1);
         SW_Timer_Init(&TEST.Timer, 1000);
         TEST.TimerStatus++;
         break;
     case 1:
         if (SW_Timer_Is_Timed_Out(&TEST.Timer)) {
             data = 0xFF;
-            ZHAL_UART_Driver_Put_Data ("TIMER 1\n", sizeof("TIMER 1\n"));
+            ZHAL_UART_Driver_Put_Data ("\nMem stat: ", sizeof("\nMem stat: "));
+            data = Memory_Get_Status(0);
+            ZHAL_UART_Driver_Put_Data (&data, 1);
+            data = SPI_Driver_Get_Status (1, NULL);
+            ZHAL_UART_Driver_Put_Data (&data, 1);
+            data = SPI_Driver_Get_Status (2, NULL);
+            ZHAL_UART_Driver_Put_Data (&data, 1);
             ZHAL_UART_Driver_Send_Data();
-            Output_Expander_Pin(1, 0);
+            //Output_Expander_Pin(1, 0);
             TEST.TimerStatus++;
         }
         break;
@@ -469,8 +525,12 @@ void main () {
 
     SPI_CONFIG();
 
+#if 0
     Output_Expander_Init();
     Output_Expander_Data(0xFF);
+#endif
+
+    Memory_Init();
 
     MATRIX.Status = 0;
 #if 0
@@ -543,6 +603,8 @@ void main () {
         TIMER_TEST();
 
         Output_Expander_Task();
+
+        Memory_Task();
 
 #if 0
 

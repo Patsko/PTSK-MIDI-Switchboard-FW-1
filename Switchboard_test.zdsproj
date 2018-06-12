@@ -18,6 +18,7 @@
 <file filter-key="">.\keypad.c</file>
 <file filter-key="">.\output_expander.c</file>
 <file filter-key="">.\crosspoint_switch.c</file>
+<file filter-key="">.\memory.c</file>
 </files>
 
 <!-- configuration information -->
@@ -306,6 +307,8 @@
 <watch-element expression="TEST.SPI_status" />
 <watch-element expression="TEST" />
 <watch-element expression="i" />
+<watch-element expression="Memory" />
+<watch-element expression="ZHAL_SPI_Driver_Data" />
 </watch-elements>
 
 <!-- breakpoint information -->
@@ -313,14 +316,28 @@
 <breakpoint temporary="false" enabled="true" >
 <line-number>147</line-number>
 <pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\ZHAL\ZHAL\zhal_uart.c</pathname>
-<address>5156</address>
+<address>5373</address>
 <command></command>
 <preserve-type>0</preserve-type>
 </breakpoint>
 <breakpoint temporary="false" enabled="true" >
 <line-number>604</line-number>
 <pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\main.c</pathname>
-<address>2576</address>
+<address>0</address>
+<command></command>
+<preserve-type>0</preserve-type>
+</breakpoint>
+<breakpoint temporary="false" enabled="true" >
+<line-number>157</line-number>
+<pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\memory.c</pathname>
+<address>9769</address>
+<command></command>
+<preserve-type>0</preserve-type>
+</breakpoint>
+<breakpoint temporary="false" enabled="true" >
+<line-number>51</line-number>
+<pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\memory.c</pathname>
+<address>9437</address>
 <command></command>
 <preserve-type>0</preserve-type>
 </breakpoint>
