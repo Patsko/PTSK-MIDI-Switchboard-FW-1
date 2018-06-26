@@ -31,6 +31,5 @@ bool_t Memory_Write_Start (uint16_t address);
 bool_t Memory_Write_Data (const uint8_t data[], const uint8_t bytes);
 void Memory_Task ();
 bool_t Memory_Close ();
-uint8_t Memory_Get_Status ();
 
 #endif // MEMORY_H

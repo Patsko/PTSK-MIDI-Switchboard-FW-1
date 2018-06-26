@@ -29,7 +29,7 @@ typedef enum {
     MEM_STAT_WRITING
 } Memory_Status_t;
 
-struct {
+static struct {
     Memory_Status_t Status;
     uint8_t Bytes;
     uint16_t Address;
@@ -67,7 +67,17 @@ static void Memory_SPI_Callback () {
  * Memory_Init
  */
 void Memory_Init () {
+    const ZHAL_GPIO_Config_t gpio_config = {
+        ZHAL_GPIO_OUTPUT,
+        ZHAL_GPIO_NORMAL,
+        DISABLE,
+        DISABLE,
+        DISABLE,
+        DISABLE
+    };
 
+    // SPI CS
+    ZHAL_GPIO_Config_Pin(CS_MEM_PORT, CS_MEM_PIN, &gpio_config);
     ZHAL_GPIO_Set_Output(CS_MEM_PORT, CS_MEM_PIN);
     ZHAL_SPI_Driver_Init();
     Memory.Status = MEM_STAT_IDLE;
@@ -155,32 +165,20 @@ void Memory_Task () {
         break;
 
     case MEM_STAT_READ_START:
-        data = MEM_OPC_READ_DATA;
-#if 0
-        if (ZHAL_SPI_Driver_Put_Data(&data, 1)) {
+        if (ZHAL_SPI_Driver_Is_Available()) {
             Memory.Status = MEM_STAT_READING;
+
             // dump SPI driver data, if there is something unread into RX buffer
-            i = ZHAL_SPI_Driver_Peek(NULL);
-            if (i != 0) {
-                ZHAL_SPI_Driver_Get_Data(NULL, i);
-            }
+            ZHAL_SPI_Driver_Get_Data(NULL, 0xFF);
+
+            data = MEM_OPC_READ_DATA;
+            ZHAL_SPI_Driver_Put_Data(&data, 1);
             ZHAL_SPI_Driver_Put_Data(&Memory.Address, sizeof(Memory.Address));
             for (i = 0; (i < Memory.Bytes) && (i < MEMORY_MAX_BYTES); i++) {
                 data = 0xFF;
                 ZHAL_SPI_Driver_Put_Data(&data, 1);
             }
-            ZHAL_SPI_Driver_Send_Data(&Memory_SPI_Driver_Config);
-        }
-#endif
-        debug[0] = MEM_OPC_READ_DATA;
-        debug[1] = (uint8_t) (Memory.Address >> 8);
-        debug[2] = (uint8_t) (Memory.Address);
-        debug[3] = 0xFF;
-        debug[4] = 0xFF;
-        debug[5] = 0xFF;
-        debug[6] = 0xFF;
-        if (ZHAL_SPI_Driver_Put_Data(&debug, 7)) {
-            Memory.Status = MEM_STAT_READING;
+
             ZHAL_SPI_Driver_Send_Data(&Memory_SPI_Driver_Config);
         }
         break;
@@ -232,14 +230,3 @@ bool_t Memory_Close () {
 }
 
 
-uint8_t Memory_Get_Status (uint8_t status) {
-    switch (status) {
-    case 0:
-        return (Memory.Status);
-        break;
-    case 1:
-        break;
-    case 2:
-        break;
-    }
-}

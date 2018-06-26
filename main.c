@@ -14,8 +14,6 @@
 #include "memory.h"
 
 
-void SPI_Driver_Callback (void);
-
 /*
 
 PA1 - AX0
@@ -56,14 +54,11 @@ struct {
     uint8_t MIDI_Message[3];
 
     uint8_t SPI_status;
-    uint8_t SPI_debug;
-    uint8_t SPI_data_to_send[10];
+    uint8_t SPI_data[10];
 
     uint8_t UART_Rx_count;
     uint8_t UART_inserted_bytes;
     uint8_t Flag;
-
-    uint8_t SPI_Debug[ZHAL_SPI_FIFO_SIZE];
 
     uint8_t TimerStatus;
     SW_Timer_t Timer;
@@ -79,35 +74,6 @@ struct {
     bool_t IsPressed;
 } BUTTON;
 
-const ZHAL_SPI_Driver_Config_t SPI_Driver_Output_Expander = {
-    CS_SHIFT_PORT,
-    CS_SHIFT_PIN,
-    SPI_Driver_Callback,
-    NULL
-};
-
-const ZHAL_SPI_Driver_Config_t SPI_Driver_Memory = {
-    CS_MEM_PORT,
-    CS_MEM_PIN,
-    SPI_Driver_Callback,
-    NULL
-};
-
-void UART_Driver_Tx_Callback (void) {
-
-}
-
-void UART_Driver_Rx_Callback (void) {
-    TEST.UART_Rx_count++;
-}
-
-
-void SPI_Driver_Callback (void) {
-    TEST.SPI_debug++;
-    if (TEST.SPI_status != 0) {
-        TEST.SPI_status++;
-    }
-}
 
 
 void MCU_INIT () {
@@ -121,8 +87,8 @@ void MCU_INIT () {
     };
     ZHAL_UART_Driver_Config_t uart_config = {
         38400,
-        UART_Driver_Tx_Callback,
-        UART_Driver_Rx_Callback
+        NULL,
+        NULL
     };
 
     // Crosspoint switch addresses
@@ -197,6 +163,15 @@ void SPI_TEST () {
     uint8_t i;
     uint8_t data;
     uint8_t data_buf[4];
+    uint16_t data16;
+
+
+    if (ZHAL_UART_Driver_Peek(&data) != 0) {
+        if (data == 'I') {
+            ZHAL_UART_Driver_Get_Data(&data, 1);
+            TEST.SPI_status = 11;
+        }
+    }
 
     // Send byte through SPI when button is pressed
     switch (TEST.SPI_status) {
@@ -204,166 +179,49 @@ void SPI_TEST () {
         if (ZHAL_UART_Driver_Peek(&data) != 0) {
             if (data == 'W') { // write to memory
                 ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 5;
+                TEST.SPI_status = 20;
             } else if (data == 'R') {  // read from memory
                 ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 8;
-            } else if (data == 'S') {  // write to shift register
-                ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 1;
-            } else if (data == 'E') {
-                ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 12;
-            } else if (data == 'I') {
-                ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 11;
+                TEST.SPI_status = 10;
             }
         }
         break;
 
-    case 1:
-        if (ZHAL_UART_Driver_Get_Data(&data, 1) != 0) {
-            ZHAL_SPI_Driver_Put_Data(&data, 1);
-            ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Output_Expander);
-
-            TEST.SPI_status++;
-        }
-        break;
-    case 2:
-        break;
-    case 3:
-        ZHAL_UART_Driver_Put_Data ("Message sent!\n", 14);
-        ZHAL_UART_Driver_Send_Data();
-
-        TEST.SPI_status = 0;
-        break;
-
-    case 5: // FRAM write enable
-        TEST.SPI_data_to_send[0] = 0x06;    // WREN
-        ZHAL_SPI_Driver_Put_Data(TEST.SPI_data_to_send, 1);
-        ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Memory);
-
-        TEST.SPI_status++;
-        break;
-    case 6: // waiting write enable
-        break;
-    case 7: // FRAM write
-        TEST.SPI_data_to_send[0] = 0x02;    // WRITE
-        TEST.SPI_data_to_send[1] = 0x00;    // addr high
-        TEST.SPI_data_to_send[2] = 0x00;    // addr low
-        TEST.SPI_data_to_send[3] = 0x01;    // data
-        TEST.SPI_data_to_send[4] = 0x02;    // data
-        TEST.SPI_data_to_send[5] = 0x03;    // data
-        TEST.SPI_data_to_send[6] = 0x04;    // data
-        ZHAL_SPI_Driver_Put_Data(TEST.SPI_data_to_send, 7);
-        ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Memory);
-
-        TEST.SPI_status = 0;
-        break;
-
-    case 8: // FRAM read
-#if 1
-        TEST.SPI_data_to_send[0] = 0x03;    // READ
-        TEST.SPI_data_to_send[1] = 0x00;    // addr high
-        TEST.SPI_data_to_send[2] = 0x00;    // addr low
-        TEST.SPI_data_to_send[3] = 0xFF;    // dummy
-        TEST.SPI_data_to_send[4] = 0xFF;    // dummy
-        TEST.SPI_data_to_send[5] = 0xFF;    // dummy
-        TEST.SPI_data_to_send[6] = 0xFF;    // dummy
-
-        ZHAL_SPI_Driver_Put_Data(TEST.SPI_data_to_send, 7);
-        ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Memory);
-#else
+    case 10: // FRAM read
         if (Memory_Read_Start(4, 0x00)) {
-
             ZHAL_UART_Driver_Put_Data ("Read started\n", sizeof("Read started\n"));
             ZHAL_UART_Driver_Send_Data();
             TEST.SPI_status++;
         }
-#endif
         break;
-    case 9:
-#if 0
-        if (ZHAL_UART_Driver_Peek(&data) != 0) {
-            if (data == 'T') {
-                ZHAL_UART_Driver_Get_Data(&data, 1);
-
-                ZHAL_UART_Driver_Put_Data ("\nTX: ", 5);
-                data = Memory_Get_Status(0);
-                ZHAL_UART_Driver_Put_Data (&data, 1);
-                SPI_Driver_Get_Status (3, &TEST.SPI_Debug);
-                ZHAL_UART_Driver_Put_Data (&TEST.SPI_Debug, ZHAL_SPI_FIFO_SIZE);
-                ZHAL_UART_Driver_Send_Data();
-            } else if (data == 'R') {
-                ZHAL_UART_Driver_Get_Data(&data, 1);
-
-                ZHAL_UART_Driver_Put_Data ("\nRX: ", 5);
-                data = Memory_Get_Status(0);
-                ZHAL_UART_Driver_Put_Data (&data, 1);
-                SPI_Driver_Get_Status (4, &TEST.SPI_Debug);
-                ZHAL_UART_Driver_Put_Data (&TEST.SPI_Debug, ZHAL_SPI_FIFO_SIZE);
-                ZHAL_UART_Driver_Send_Data();
-            }
+    case 11:
+        if (Memory_Read_Data(&TEST.SPI_data)) {
+            TEST.SPI_status++;
         }
-
-        if (Memory_Read_Data(&data_buf)) {
-            ZHAL_UART_Driver_Put_Data ("Read finished\n", sizeof("Read finished\n"));
+        break;
+    case 12:
+        if (ZHAL_UART_Driver_Put_Data ("Read finished", sizeof("Read finished") - 1)) {
+            ZHAL_UART_Driver_Put_Data (&TEST.SPI_data, 4);
             ZHAL_UART_Driver_Send_Data();
-
-            ZHAL_UART_Driver_Put_Data (&data_buf, 4);
-            ZHAL_UART_Driver_Send_Data();
-
             TEST.SPI_status = 0;
         }
-#endif
         break;
-    case 10:
-        // send all data to UART
-        i = ZHAL_SPI_Driver_Peek(NULL);  // get the number of bytes available
 
-        while (i > 0) {
-            ZHAL_SPI_Driver_Get_Data(&data, 1);
-            ZHAL_UART_Driver_Put_Data (&data, 1);
-            i--;
+    case 20:
+        if (Memory_Write_Start(0x00)) {
+            ZHAL_UART_Driver_Put_Data ("Write started\n", sizeof("Write started\n"));
+            ZHAL_UART_Driver_Send_Data();
+            TEST.SPI_status++;
         }
-        ZHAL_UART_Driver_Send_Data();
-
-        TEST.SPI_status = 0;
         break;
-
-    case 11:
-        data = ZHAL_SPI_Driver_Peek(NULL);
-        ZHAL_UART_Driver_Put_Data (&data, 1);
-        ZHAL_SPI_Driver_Peek(&data);
-        ZHAL_UART_Driver_Put_Data (&data, 1);
-        ZHAL_UART_Driver_Put_Data (&TEST.SPI_debug, 1);
-
-        ZHAL_UART_Driver_Send_Data();
-
-        TEST.SPI_status = 0;
-        break;
-
-    case 12: // FRAM write enable
-        TEST.SPI_data_to_send[0] = 0x06;    // WREN
-        ZHAL_SPI_Driver_Put_Data(TEST.SPI_data_to_send, 1);
-        ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Memory);
-
-        TEST.SPI_status++;
-        break;
-    case 13: // waiting write enable
-        break;
-    case 14: // FRAM write
-        TEST.SPI_data_to_send[0] = 0x02;    // WRITE
-        TEST.SPI_data_to_send[1] = 0x00;    // addr high
-        TEST.SPI_data_to_send[2] = 0x00;    // addr low
-        TEST.SPI_data_to_send[3] = 0x00;    // data
-        TEST.SPI_data_to_send[4] = 0x00;    // data
-        TEST.SPI_data_to_send[5] = 0x00;    // data
-        TEST.SPI_data_to_send[6] = 0x00;    // data
-        ZHAL_SPI_Driver_Put_Data(TEST.SPI_data_to_send, 7);
-        ZHAL_SPI_Driver_Send_Data(&SPI_Driver_Memory);
-
-        TEST.SPI_status = 0;
+    case 21:
+        TEST.SPI_data[0] = 5;
+        TEST.SPI_data[1] = 6;
+        TEST.SPI_data[2] = 7;
+        TEST.SPI_data[3] = 8;
+        if (Memory_Write_Data(&TEST.SPI_data, 4)) {
+            TEST.SPI_status = 0;
+        }
         break;
     }
 }
@@ -374,31 +232,13 @@ void TIMER_TEST () {
 
     switch (TEST.TimerStatus) {
     case 0:
-        data = 0;
-        ZHAL_UART_Driver_Put_Data ("\nMem stat: ", sizeof("\nMem stat: "));
-        data = Memory_Get_Status(0);
-        ZHAL_UART_Driver_Put_Data (&data, 1);
-        data = SPI_Driver_Get_Status (1, NULL);
-        ZHAL_UART_Driver_Put_Data (&data, 1);
-        data = SPI_Driver_Get_Status (2, NULL);
-        ZHAL_UART_Driver_Put_Data (&data, 1);
-        ZHAL_UART_Driver_Send_Data();
-        //Output_Expander_Pin(1, 1);
+        Output_Expander_Pin(1, 1);
         SW_Timer_Init(&TEST.Timer, 1000);
         TEST.TimerStatus++;
         break;
     case 1:
         if (SW_Timer_Is_Timed_Out(&TEST.Timer)) {
-            data = 0xFF;
-            ZHAL_UART_Driver_Put_Data ("\nMem stat: ", sizeof("\nMem stat: "));
-            data = Memory_Get_Status(0);
-            ZHAL_UART_Driver_Put_Data (&data, 1);
-            data = SPI_Driver_Get_Status (1, NULL);
-            ZHAL_UART_Driver_Put_Data (&data, 1);
-            data = SPI_Driver_Get_Status (2, NULL);
-            ZHAL_UART_Driver_Put_Data (&data, 1);
-            ZHAL_UART_Driver_Send_Data();
-            //Output_Expander_Pin(1, 0);
+            Output_Expander_Pin(1, 0);
             TEST.TimerStatus++;
         }
         break;
@@ -523,12 +363,8 @@ void main () {
 
     MCU_INIT(); //rotinas de inicialização
 
-    SPI_CONFIG();
-
-#if 0
     Output_Expander_Init();
     Output_Expander_Data(0xFF);
-#endif
 
     Memory_Init();
 
@@ -606,9 +442,7 @@ void main () {
 
         Memory_Task();
 
-#if 0
 
-#endif
 #if 0
         // MIDI test - when the button is pressed, sends note on, waits some time and sends note off
         switch (TEST.MIDI_status) {

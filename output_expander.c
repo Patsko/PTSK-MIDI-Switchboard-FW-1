@@ -46,7 +46,17 @@ static const ZHAL_SPI_Driver_Config_t SPI_Driver_Config = {
  * Output_Expander_Init
  */
 void Output_Expander_Init () {
+    const ZHAL_GPIO_Config_t gpio_config = {
+        ZHAL_GPIO_OUTPUT,
+        ZHAL_GPIO_NORMAL,
+        DISABLE,
+        DISABLE,
+        DISABLE,
+        DISABLE
+    };
 
+    // SPI CS
+    ZHAL_GPIO_Config_Pin(CS_SHIFT_PORT, CS_SHIFT_PIN, &gpio_config);
     ZHAL_GPIO_Set_Output(CS_SHIFT_PORT, CS_SHIFT_PIN);
     ZHAL_SPI_Driver_Init();
     OutExp.Status = OUT_EXP_IDLE;
