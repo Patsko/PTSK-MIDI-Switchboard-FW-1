@@ -10,27 +10,27 @@
  * System defines
  */
 
-#define BTN0_PORT       ZHAL_GPIO_B
-#define BTN0_PIN        GPIO_PIN_4
+#define ROW0_PORT       ZHAL_GPIO_B     // BTN0
+#define ROW0_PIN        GPIO_PIN_4
 
-#define BTN1_PORT       ZHAL_GPIO_B
-#define BTN1_PIN        GPIO_PIN_2
+#define ROW1_PORT       ZHAL_GPIO_B
+#define ROW1_PIN        GPIO_PIN_2
 
-#define BTN2_PORT       ZHAL_GPIO_B
-#define BTN2_PIN        GPIO_PIN_3
+#define ROW2_PORT       ZHAL_GPIO_B
+#define ROW2_PIN        GPIO_PIN_3
 
-#define BTN3_PORT       ZHAL_GPIO_B
-#define BTN3_PIN        GPIO_PIN_1
+#define COLUMN0_PORT    ZHAL_GPIO_B     // BTN3
+#define COLUMN0_PIN     GPIO_PIN_1
 
-#define BTN4_PORT       ZHAL_GPIO_B
-#define BTN4_PIN        GPIO_PIN_5
+#define COLUMN1_PORT    ZHAL_GPIO_B
+#define COLUMN1_PIN     GPIO_PIN_5
 
-#define BTN5_PORT       ZHAL_GPIO_A
-#define BTN5_PIN        GPIO_PIN_1
+#define COLUMN2_PORT    ZHAL_GPIO_A
+#define COLUMN2_PIN     GPIO_PIN_1
 
 #if 0
-#define BTN6_PORT       ZHAL_GPIO_A
-#define BTN6_PIN        GPIO_PIN_0
+#define COLUMN3_PORT       ZHAL_GPIO_A
+#define COLUMN3_PIN        GPIO_PIN_0
 #endif
 
 #define SPI_MISO_PORT   ZHAL_GPIO_C
