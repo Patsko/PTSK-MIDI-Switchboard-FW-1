@@ -83,10 +83,8 @@ void Memory_Init () {
     Memory.Status = MEM_STAT_IDLE;
 }
 
-/*
- * Memory_Read_Start
- * Starts the reading process, returning TRUE when
- */
+
+#if 0
 bool_t Memory_Read_Start (uint8_t bytes, uint16_t address) {
     bool_t status = FALSE;
 
@@ -104,10 +102,6 @@ bool_t Memory_Read_Start (uint8_t bytes, uint16_t address) {
     return (status);
 }
 
-/*
- * Memory_Read_Data
- * Reads data
- */
 bool_t Memory_Read_Data (const uint8_t data[]) {
     bool_t status = FALSE;
 
@@ -118,7 +112,34 @@ bool_t Memory_Read_Data (const uint8_t data[]) {
     }
     return (status);
 }
+#endif
 
+/*
+ * Memory_Read_Data
+ * Reads data
+ */
+bool_t Memory_Read_Data (const uint16_t address, const uint8_t data[], const uint8_t bytes) {
+    bool_t status = FALSE;
+
+    if (Memory.Status == MEM_STAT_IDLE) {
+        if (bytes < MEMORY_MAX_BYTES) {
+            Memory.Bytes = bytes;
+        } else {
+            Memory.Bytes = MEMORY_MAX_BYTES;
+        }
+        Memory.Address = address;
+        Memory.Status = MEM_STAT_READ_START;
+    } else if (Memory.Status == MEM_STAT_READ_FINISHED) {
+        if ((Memory.Address == address) && (Memory.Bytes == bytes)) {   // to guarantee that the caller who is reading now is the same who started the process
+            ZHAL_SPI_Driver_Get_Data(data, Memory.Bytes);
+            Memory.Status = MEM_STAT_IDLE;
+            status = TRUE;
+        }
+    }
+    return (status);
+}
+
+#if 0
 /*
  * Memory_Write_Start
  */
@@ -137,7 +158,7 @@ bool_t Memory_Write_Start (uint16_t address) {
 /*
  * Memory_Write_Data
  */
-bool_t Memory_Write_Data (const uint8_t data[], const uint8_t bytes) {
+bool_t Memory_Write_Data ( const uint8_t data[], const uint8_t bytes) {
     bool_t status = FALSE;
 
     if (Memory.Status == MEM_STAT_WRITE_READY) {
@@ -148,6 +169,29 @@ bool_t Memory_Write_Data (const uint8_t data[], const uint8_t bytes) {
     }
     return (status);
 }
+#endif
+
+/*
+ * Memory_Write_Data
+ */
+bool_t Memory_Write_Data (const uint16_t address, const uint8_t data[], const uint8_t bytes) {
+    bool_t status = FALSE;
+
+    if (Memory.Status == MEM_STAT_IDLE) {
+        Memory.Address = address;
+        Memory.Status = MEM_STAT_WRITE_START;
+    } else if (Memory.Status == MEM_STAT_WRITE_READY) {
+        if (Memory.Address == address) {     // to guarantee that the caller who is writing now is the same who started the process
+            ZHAL_SPI_Driver_Put_Data(data, bytes);
+            ZHAL_SPI_Driver_Send_Data(&Memory_SPI_Driver_Config);
+            Memory.Status = MEM_STAT_WRITING;
+            status = TRUE;
+        }
+    }
+    return (status);
+}
+
+
 
 /*
  * Memory_Task
@@ -189,6 +233,7 @@ void Memory_Task () {
         ZHAL_SPI_Driver_Get_Data(NULL, 3);  // dump RX buffer data related to opcode and address sent (3 bytes)
         break;
     case MEM_STAT_READ_FINISHED:
+#warning "Add a timeout here"
         break;
     case MEM_STAT_WRITE_START:
         data = MEM_OPC_WRITE_ENABLE;
@@ -207,6 +252,7 @@ void Memory_Task () {
         }
         break;
     case MEM_STAT_WRITE_READY:
+#warning "Add a timeout here"
     case MEM_STAT_WRITING:
         break;
     }
