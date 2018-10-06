@@ -25,10 +25,8 @@
  */
 
 void Memory_Init ();
-bool_t Memory_Read_Start (uint8_t bytes, uint16_t address);
-bool_t Memory_Read_Data (const uint8_t data[]);
-bool_t Memory_Write_Start (uint16_t address);
-bool_t Memory_Write_Data (const uint8_t data[], const uint8_t bytes);
+bool_t Memory_Read_Data (const uint16_t address, const uint8_t data[], const uint8_t bytes);
+bool_t Memory_Write_Data (const uint16_t address, const uint8_t data[], const uint8_t bytes);
 void Memory_Task ();
 bool_t Memory_Close ();
 

@@ -165,41 +165,29 @@ void SPI_TEST () {
     uint8_t data_buf[4];
     uint16_t data16;
 
-
-    if (ZHAL_UART_Driver_Peek(&data) != 0) {
-        if (data == 'I') {
-            ZHAL_UART_Driver_Get_Data(&data, 1);
-            TEST.SPI_status = 11;
-        }
-    }
-
     // Send byte through SPI when button is pressed
     switch (TEST.SPI_status) {
     case 0:
         if (ZHAL_UART_Driver_Peek(&data) != 0) {
             if (data == 'W') { // write to memory
                 ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 20;
+                TEST.SPI_status = 3;
             } else if (data == 'R') {  // read from memory
                 ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 10;
+                TEST.SPI_status = 1;
+            } else if (data == 'E') { // "erase" memory
+                ZHAL_UART_Driver_Get_Data(&data, 1);
+                TEST.SPI_status = 4;
             }
         }
         break;
 
-    case 10: // FRAM read
-        if (Memory_Read_Start(4, 0x00)) {
-            ZHAL_UART_Driver_Put_Data ("Read started\n", sizeof("Read started\n"));
-            ZHAL_UART_Driver_Send_Data();
+    case 1: // FRAM read
+        if (Memory_Read_Data(0x00, &TEST.SPI_data, 4)) {
             TEST.SPI_status++;
         }
         break;
-    case 11:
-        if (Memory_Read_Data(&TEST.SPI_data)) {
-            TEST.SPI_status++;
-        }
-        break;
-    case 12:
+    case 2:
         if (ZHAL_UART_Driver_Put_Data ("Read finished", sizeof("Read finished") - 1)) {
             ZHAL_UART_Driver_Put_Data (&TEST.SPI_data, 4);
             ZHAL_UART_Driver_Send_Data();
@@ -207,19 +195,26 @@ void SPI_TEST () {
         }
         break;
 
-    case 20:
-        if (Memory_Write_Start(0x00)) {
-            ZHAL_UART_Driver_Put_Data ("Write started\n", sizeof("Write started\n"));
-            ZHAL_UART_Driver_Send_Data();
-            TEST.SPI_status++;
-        }
-        break;
-    case 21:
+    case 3:
         TEST.SPI_data[0] = 5;
         TEST.SPI_data[1] = 6;
         TEST.SPI_data[2] = 7;
         TEST.SPI_data[3] = 8;
-        if (Memory_Write_Data(&TEST.SPI_data, 4)) {
+        if (Memory_Write_Data(0x00, &TEST.SPI_data, 4)) {
+            ZHAL_UART_Driver_Put_Data ("Write started\n", sizeof("Write started\n"));
+            ZHAL_UART_Driver_Send_Data();
+            TEST.SPI_status = 0;
+        }
+        break;
+
+    case 4:
+        TEST.SPI_data[0] = 0;
+        TEST.SPI_data[1] = 0;
+        TEST.SPI_data[2] = 0;
+        TEST.SPI_data[3] = 0;
+        if (Memory_Write_Data(0x00, &TEST.SPI_data, 4)) {
+            ZHAL_UART_Driver_Put_Data ("Write started\n", sizeof("Write started\n"));
+            ZHAL_UART_Driver_Send_Data();
             TEST.SPI_status = 0;
         }
         break;
