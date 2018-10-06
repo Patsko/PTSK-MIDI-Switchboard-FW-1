@@ -69,6 +69,7 @@ static void Crosspoint_Switch_Control (const uint8_t x, const uint8_t y, const u
 
     if ((x < CROSSPOINT_X_SWITCHES) && (y < CROSSPOINT_Y_SWITCHES)) {
         ZHAL_GPIO_Set_Output(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN);
+#warning "Should CS output high be after setting address and data?"
 
         ZHAL_GPIO_Reset_Output(CROSSPOINT_AX0_PORT, CROSSPOINT_AX0_PIN);
         ZHAL_GPIO_Reset_Output(CROSSPOINT_AX1_PORT, CROSSPOINT_AX1_PIN);
