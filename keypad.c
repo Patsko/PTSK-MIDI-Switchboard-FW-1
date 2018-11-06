@@ -83,6 +83,8 @@ static void Keypad_Init (void) {
 
 /*
  * Keypad_Config_Button
+ * row: 0 to KEYPAD_MAX_ROWS
+ * column: 0 to KEYPAD_MAX_COLUMNS
  */
 bool_t Keypad_Config_Button (uint8_t row, uint8_t column, void (* callback) (uint8_t row, uint8_t column, Keypad_Transition_t status), Keypad_Button_Config_t config) {
     uint8_t status = 0;

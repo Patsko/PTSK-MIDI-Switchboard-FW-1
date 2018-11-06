@@ -97,6 +97,7 @@ void Output_Expander_Data (uint8_t data) {
 
 /*
  * Output_Expander_Pin
+ * pin: 0 to 7
  */
 void Output_Expander_Pin (uint8_t pin, uint8_t status) {
     uint8_t data = 0x01;
