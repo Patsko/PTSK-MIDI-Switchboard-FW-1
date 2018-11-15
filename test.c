@@ -228,13 +228,13 @@ void TIMER_TEST () {
 
     switch (TEST.TimerStatus) {
     case 0:
-        Output_Expander_Pin(1, 1);
+        Output_Expander_Pin(0, 1);
         SW_Timer_Init(&TEST.Timer, 1000);
         TEST.TimerStatus++;
         break;
     case 1:
         if (SW_Timer_Is_Timed_Out(&TEST.Timer)) {
-            Output_Expander_Pin(1, 0);
+            Output_Expander_Pin(0, 0);
             SW_Timer_Init(&TEST.Timer, 2000);
             TEST.TimerStatus++;
         }
@@ -468,14 +468,14 @@ void KEYPAD_CALLBACK (uint8_t row, uint8_t column, Keypad_Transition_t status) {
 
     if ((row == 0) && (column == 0)) {
         TEST.KeypadLed[0] = ~TEST.KeypadLed[0];
-        Output_Expander_Pin(0, TEST.KeypadLed[0]);
-    } else if ((row == 0) && (column == 1)) {
+        Output_Expander_Pin(1, TEST.KeypadLed[0]);
+    } else if ((row == 1) && (column == 0)) {
         TEST.KeypadLed[1] = ~TEST.KeypadLed[1];
         Output_Expander_Pin(2, TEST.KeypadLed[1]);
-    } else if ((row == 0) && (column == 2)) {
+    } else if ((row == 2) && (column == 0)) {
         TEST.KeypadLed[2] = ~TEST.KeypadLed[2];
         Output_Expander_Pin(3, TEST.KeypadLed[2]);
-    } else if ((row == 1) && (column == 0)) {
+    } else if ((row == 0) && (column == 1)) {
         TEST.KeypadLed[3] = ~TEST.KeypadLed[3];
         Output_Expander_Pin(4, TEST.KeypadLed[3]);
     }
@@ -491,9 +491,9 @@ void KEYPAD_TEST () {
         config.Mode = KEYPAD_BTN_RELEASED_ONLY;
         config.Type = KEYPAD_BTN_NORMALLY_CLOSED;
         Keypad_Config_Button (0, 0, KEYPAD_CALLBACK, config);
-        Keypad_Config_Button (0, 1, KEYPAD_CALLBACK, config);
-        Keypad_Config_Button (0, 2, KEYPAD_CALLBACK, config);
         Keypad_Config_Button (1, 0, KEYPAD_CALLBACK, config);
+        Keypad_Config_Button (2, 0, KEYPAD_CALLBACK, config);
+        Keypad_Config_Button (0, 1, KEYPAD_CALLBACK, config);
 
         TEST.KeypadLed[0] = 255;
         TEST.KeypadLed[1] = 255;
