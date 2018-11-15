@@ -53,5 +53,6 @@ void Crosspoint_Switch_Open_Switches ();
 void Crosspoint_Switch_Set (const uint8_t x, const uint8_t y, const uint8_t status);
 uint8_t Crosspoint_Switch_Get (const uint8_t x, const uint8_t y);
 void Crosspoint_Switch_Task (void);
+bool_t Crosspoint_Switch_Close (void);
 
 #endif // CROSSPOINT_SWITCH_H

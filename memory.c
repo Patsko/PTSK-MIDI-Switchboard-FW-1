@@ -268,7 +268,7 @@ bool_t Memory_Close () {
 
     if (Memory.Status == MEM_STAT_IDLE) {
         Memory.Status = MEM_STAT_UNINITIALIZED;
-    } else if ((Memory.Status = MEM_STAT_UNINITIALIZED) && (ZHAL_SPI_Driver_Close() == TRUE)) {
+    } else if ((Memory.Status == MEM_STAT_UNINITIALIZED) && (ZHAL_SPI_Driver_Close() == TRUE)) {
         status = TRUE;
     }
 

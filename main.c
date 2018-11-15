@@ -32,14 +32,13 @@ void main () {
     while (1){
 
         Output_Expander_Task();
-
         Memory_Task();
-
         Keypad_Task();
+        Crosspoint_Switch_Task();
 
         TIMER_TEST();
-
         KEYPAD_TEST();
+        APPLICATION_TEST();
     }
 }
 

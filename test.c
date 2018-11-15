@@ -11,12 +11,14 @@
 #include "output_expander.h"
 #include "memory.h"
 #include "keypad.h"
+#include "crosspoint_switch.h"
 
 struct {
     unsigned char Status;
 } MATRIX;
 
 struct {
+#if 0
     uint8_t UART_status;
     char MessageReceived[30];
     char DataReceived;
@@ -30,13 +32,17 @@ struct {
 
     uint8_t UART_Rx_count;
     uint8_t UART_inserted_bytes;
-    uint8_t Flag;
-
+#endif
     uint8_t TimerStatus;
     SW_Timer_t Timer;
 
     uint8_t KeypadStatus;
     uint8_t KeypadLed[4];
+
+    struct {
+        uint8_t Status;
+        uint8_t ButtonFlag;
+    } APPLICATION;
 } TEST;
 
 
@@ -50,7 +56,7 @@ struct {
 } BUTTON;
 
 
-
+#if 0
 void MCU_INIT () {
     ZHAL_GPIO_Config_t gpio_config = {
         ZHAL_GPIO_OUTPUT,
@@ -195,7 +201,7 @@ void SPI_TEST () {
         break;
     }
 }
-
+#endif
 
 #if 0
 // Timer test with blocking delay
@@ -247,6 +253,7 @@ void TIMER_TEST () {
     }
 }
 
+#if 0
 void WAIT () {
     uint8_t count = 100;
 
@@ -255,7 +262,6 @@ void WAIT () {
     }
 }
 
-#if 0
 void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char status) {
 
     ZHAL_GPIO_Reset_Output(ZHAL_GPIO_C, GPIO_PIN_5);    // Strobe
@@ -324,6 +330,8 @@ void CROSSPOINT_SWITCH_CONTROL (unsigned char x, unsigned char y, unsigned char 
 }
 #endif
 
+
+#if 0
 unsigned char BUTTON_DETECTION (ZHAL_GPIO_Port_t port, uint8_t pin) {
 
     switch (BUTTON.Status) {
@@ -358,7 +366,7 @@ void CROSSPOINT_SWITCH_TEST () {
             if (MATRIX.Status > 4) {
                 MATRIX.Status = 0;
             }
-#if 0
+
             switch (MATRIX.Status) {
             case 0: // bypass - closes X0-Y0
                 CROSSPOINT_SWITCH_CONTROL(15, 0, 0);
@@ -407,10 +415,10 @@ void CROSSPOINT_SWITCH_TEST () {
                 TEST.SPI_status = 2;
                 break;
             }
-#endif
+
         }
 }
-
+#endif
 
 void MIDI_TEST () {
 #if 0
@@ -463,9 +471,79 @@ void MIDI_TEST () {
 #endif
 }
 
+void APPLICATION_TEST () {
+
+    switch (TEST.APPLICATION.Status) {
+    case 0:
+        if (TEST.APPLICATION.ButtonFlag != 0) {
+            if (Output_Expander_Close() && Memory_Close()) {
+                Crosspoint_Switch_Init();
+                switch (TEST.APPLICATION.ButtonFlag) {
+                case 1:
+                    Crosspoint_Switch_Set (0, 0, 1);    // SW_IN_1 - SW_OUT_1
+                    Crosspoint_Switch_Set (0, 1, 0);    // SW_IN_1 - TO_EFF_1
+                    Crosspoint_Switch_Set (2, 0, 0);    // FROM_EFF_1 - SW_OUT_1
+                    break;
+                case 2:
+                    Crosspoint_Switch_Set (0, 0, 0);    // SW_IN_1 - SW_OUT_1
+                    Crosspoint_Switch_Set (0, 1, 1);    // SW_IN_1 - TO_EFF_1
+                    Crosspoint_Switch_Set (2, 0, 1);    // FROM_EFF_1 - SW_OUT_1
+                    break;
+                case 3:
+                    Crosspoint_Switch_Open_Switches();
+                    break;
+                }
+                TEST.APPLICATION.Status++;
+            }
+        }
+        break;
+    case 1:
+        if (Crosspoint_Switch_Close()) {
+            Output_Expander_Init();
+            Memory_Init();
+
+            switch (TEST.APPLICATION.ButtonFlag) {
+            case 1:
+                Output_Expander_Pin(1, 0);
+                Output_Expander_Pin(2, 1);
+                Output_Expander_Pin(3, 1);
+                break;
+            case 2:
+                Output_Expander_Pin(1, 1);
+                Output_Expander_Pin(2, 0);
+                Output_Expander_Pin(3, 1);
+                break;
+            case 3:
+                Output_Expander_Pin(1, 1);
+                Output_Expander_Pin(2, 1);
+                Output_Expander_Pin(3, 0);
+                break;
+            }
+
+            TEST.APPLICATION.ButtonFlag = 0;
+            TEST.APPLICATION.Status = 0;
+        }
+        break;
+    }
+}
+
+
+
+
+
 void KEYPAD_CALLBACK (uint8_t row, uint8_t column, Keypad_Transition_t status) {
     uint8_t data;
 
+    if ((row == 0) && (column == 0)) {
+        TEST.APPLICATION.ButtonFlag = 1;
+    } else if ((row == 1) && (column == 0)) {
+        TEST.APPLICATION.ButtonFlag = 2;
+    } else if ((row == 2) && (column == 0)) {
+        TEST.APPLICATION.ButtonFlag = 3;
+    } else if ((row == 0) && (column == 1)) {
+        TEST.APPLICATION.ButtonFlag = 4;
+    }
+#if 0
     if ((row == 0) && (column == 0)) {
         TEST.KeypadLed[0] = ~TEST.KeypadLed[0];
         Output_Expander_Pin(1, TEST.KeypadLed[0]);
@@ -479,7 +557,7 @@ void KEYPAD_CALLBACK (uint8_t row, uint8_t column, Keypad_Transition_t status) {
         TEST.KeypadLed[3] = ~TEST.KeypadLed[3];
         Output_Expander_Pin(4, TEST.KeypadLed[3]);
     }
-
+#endif
 }
 
 

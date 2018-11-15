@@ -16,6 +16,12 @@ typedef enum {
     TO_BE_CLOSED
 } Switch_State_t;
 
+typedef enum {
+    SW_STAT_UNINITIALIZED = 0,
+    SW_STAT_IDLE,
+    SW_STAT_WRITING
+} Switch_Status_t;
+
 static struct {
     Switch_State_t Switch[CROSSPOINT_X_SWITCHES][CROSSPOINT_Y_SWITCHES];
     uint8_t Status;
@@ -44,10 +50,6 @@ void Crosspoint_Switch_Init () {
         DISABLE
     };
 
-    ZHAL_GPIO_Config_Pin(CROSSPOINT_DATA_PORT, CROSSPOINT_DATA_PIN, &gpio_config);
-    ZHAL_GPIO_Config_Pin(CROSSPOINT_CLK_PORT, CROSSPOINT_CLK_PIN, &gpio_config);
-    ZHAL_GPIO_Config_Pin(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN, &gpio_config);
-
     ZHAL_GPIO_Config_Pin(CROSSPOINT_AX0_PORT, CROSSPOINT_AX0_PIN, &gpio_config);
     ZHAL_GPIO_Config_Pin(CROSSPOINT_AX1_PORT, CROSSPOINT_AX1_PIN, &gpio_config);
     ZHAL_GPIO_Config_Pin(CROSSPOINT_AX2_PORT, CROSSPOINT_AX2_PIN, &gpio_config);
@@ -55,7 +57,18 @@ void Crosspoint_Switch_Init () {
     ZHAL_GPIO_Config_Pin(CROSSPOINT_AY0_PORT, CROSSPOINT_AY0_PIN, &gpio_config);
     ZHAL_GPIO_Config_Pin(CROSSPOINT_AY1_PORT, CROSSPOINT_AY1_PIN, &gpio_config);
     ZHAL_GPIO_Config_Pin(CROSSPOINT_AY2_PORT, CROSSPOINT_AY2_PIN, &gpio_config);
+    ZHAL_GPIO_Config_Pin(CROSSPOINT_DATA_PORT, CROSSPOINT_DATA_PIN, &gpio_config);
+    ZHAL_GPIO_Config_Pin(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN, &gpio_config);
+    ZHAL_GPIO_Config_Pin(CROSSPOINT_CLK_PORT, CROSSPOINT_CLK_PIN, &gpio_config);
 
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_AX0_PORT, CROSSPOINT_AX0_PIN);
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_AX1_PORT, CROSSPOINT_AX1_PIN);
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_AX2_PORT, CROSSPOINT_AX2_PIN);
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_AX3_PORT, CROSSPOINT_AX3_PIN);
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_AY0_PORT, CROSSPOINT_AY0_PIN);
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_AY1_PORT, CROSSPOINT_AY1_PIN);
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_AY2_PORT, CROSSPOINT_AY2_PIN);
+    ZHAL_GPIO_Reset_Output(CROSSPOINT_DATA_PORT, CROSSPOINT_DATA_PIN);
     ZHAL_GPIO_Reset_Output(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN);
     ZHAL_GPIO_Reset_Output(CROSSPOINT_CLK_PORT, CROSSPOINT_CLK_PIN);
 
@@ -64,12 +77,13 @@ void Crosspoint_Switch_Init () {
 
 /*
  * Crosspoint_Switch_Control
+ * From MT8816 data sheet: Data is presented to the memory on the DATA input.
+ * Data is asynchronously written into memory whenever both the CS (Chip Select) and STROBE inputs are high and are latched on the falling edge of STROBE.
+ * A logical “1” written into a memory cell turns the corresponding crosspoint switch on and a logical “0” turns the crosspoint off.
  */
 static void Crosspoint_Switch_Control (const uint8_t x, const uint8_t y, const uint8_t status) {
 
     if ((x < CROSSPOINT_X_SWITCHES) && (y < CROSSPOINT_Y_SWITCHES)) {
-        ZHAL_GPIO_Set_Output(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN);
-#warning "Should CS output high be after setting address and data?"
 
         ZHAL_GPIO_Reset_Output(CROSSPOINT_AX0_PORT, CROSSPOINT_AX0_PIN);
         ZHAL_GPIO_Reset_Output(CROSSPOINT_AX1_PORT, CROSSPOINT_AX1_PIN);
@@ -181,15 +195,29 @@ static void Crosspoint_Switch_Control (const uint8_t x, const uint8_t y, const u
         } else {
             ZHAL_GPIO_Set_Output(CROSSPOINT_DATA_PORT, CROSSPOINT_DATA_PIN);
         }
+
+        ZHAL_GPIO_Set_Output(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN);    // CS pin goes to high only after address and data are defined
         Wait();     // Address must be stable before STROBE goes high
 
-        // Clock pulse
+        // Strobe pulse
         ZHAL_GPIO_Set_Output(CROSSPOINT_CLK_PORT, CROSSPOINT_CLK_PIN);
         Wait();
         ZHAL_GPIO_Reset_Output(CROSSPOINT_CLK_PORT, CROSSPOINT_CLK_PIN);
         Wait();
+
         ZHAL_GPIO_Reset_Output(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN);
         Wait();
+
+        // all outputs are zeroed, to lower MT8816 power consumption.
+        // a high level MCU output is at 3,3V and MT8816 supply is 5V, which places its input near the linear region
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_AX0_PORT, CROSSPOINT_AX0_PIN);
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_AX1_PORT, CROSSPOINT_AX1_PIN);
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_AX2_PORT, CROSSPOINT_AX2_PIN);
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_AX3_PORT, CROSSPOINT_AX3_PIN);
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_AY0_PORT, CROSSPOINT_AY0_PIN);
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_AY1_PORT, CROSSPOINT_AY1_PIN);
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_AY2_PORT, CROSSPOINT_AY2_PIN);
+        ZHAL_GPIO_Reset_Output(CROSSPOINT_DATA_PORT, CROSSPOINT_DATA_PIN);
     }
 }
 
@@ -205,7 +233,10 @@ void Crosspoint_Switch_Open_Switches () {
             Crosspoint_Switch.Switch[x][y] = TO_BE_OPENED;
         }
     }
-    Crosspoint_Switch.Status = 1;
+
+    if (Crosspoint_Switch.Status != SW_STAT_UNINITIALIZED) {
+        Crosspoint_Switch.Status = SW_STAT_WRITING;
+    }
 }
 
 
@@ -221,7 +252,9 @@ void Crosspoint_Switch_Set (const uint8_t x, const uint8_t y, const uint8_t stat
             Crosspoint_Switch.Switch[x][y] = TO_BE_CLOSED;
         }
     }
-    Crosspoint_Switch.Status = 1;
+    if (Crosspoint_Switch.Status != SW_STAT_UNINITIALIZED) {
+        Crosspoint_Switch.Status = SW_STAT_WRITING;
+    }
 }
 
 
@@ -242,9 +275,10 @@ void Crosspoint_Switch_Task () {
     uint8_t x, y;
 
     switch (Crosspoint_Switch.Status) {
-    case 0:
+    case SW_STAT_UNINITIALIZED:
+    case SW_STAT_IDLE:
         break;
-    case 1:
+    case SW_STAT_WRITING:
         for (x = 0; x < CROSSPOINT_X_SWITCHES; x++) {
             for (y = 0; y < CROSSPOINT_Y_SWITCHES; y++) {
                 if (Crosspoint_Switch.Switch[x][y] == TO_BE_OPENED) {
@@ -254,7 +288,29 @@ void Crosspoint_Switch_Task () {
                 }
             }
         }
-        Crosspoint_Switch.Status = 0;
+        Crosspoint_Switch.Status = SW_STAT_IDLE;
+        break;
+    default:
+        Crosspoint_Switch.Status = SW_STAT_UNINITIALIZED;
         break;
     }
 }
+
+
+/*
+ * Crosspoint_Switch_Close
+ */
+bool_t Crosspoint_Switch_Close () {
+    bool_t status = FALSE;
+
+    if (Crosspoint_Switch.Status != SW_STAT_WRITING) {
+        Crosspoint_Switch.Status = SW_STAT_UNINITIALIZED;
+        status = TRUE;
+    }
+
+    return (status);
+}
+
+
+
+

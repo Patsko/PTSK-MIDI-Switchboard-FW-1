@@ -12,5 +12,6 @@ void TIMER_TEST ();
 void CROSSPOINT_SWITCH_TEST ();
 void MIDI_TEST ();
 void KEYPAD_TEST ();
+void APPLICATION_TEST ();
 
 #endif  // TEST_H

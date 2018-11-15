@@ -126,7 +126,7 @@ bool_t Output_Expander_Close () {
 
     if (OutExp.Status == OUT_EXP_IDLE) {
         OutExp.Status = OUT_EXP_UNINITIALIZED;
-    } else if ((OutExp.Status = OUT_EXP_UNINITIALIZED) && (ZHAL_SPI_Driver_Close() == TRUE)) {
+    } else if ((OutExp.Status == OUT_EXP_UNINITIALIZED) && (ZHAL_SPI_Driver_Close() == TRUE)) {
         status = TRUE;
     }
 
