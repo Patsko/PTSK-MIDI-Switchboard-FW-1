@@ -13,16 +13,17 @@
 #include "output_expander.h"
 #include "memory.h"
 #include "keypad.h"
+#include "crosspoint_switch.h"
+#include "debug.h"
 
 #warning "Test"
 #include "test.h"
 
 
 void main () {
-    uint8_t i;
-    uint8_t data;
-
     ZHAL_Init();
+
+    Crosspoint_Switch_Init();   // must be called before Memory_Init/Output_Expander_Init
 
     Output_Expander_Init();
     Output_Expander_Data(0xFF);
@@ -35,6 +36,7 @@ void main () {
         Memory_Task();
         Keypad_Task();
         Crosspoint_Switch_Task();
+        Debug_Monitor_Task();
 
         TIMER_TEST();
         KEYPAD_TEST();

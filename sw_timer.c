@@ -11,6 +11,7 @@
 
 /*
  * Timer_Init
+ * Initializes a timer, with a timeout specified in ticks
  */
 void SW_Timer_Init (SW_Timer_t * timer_p, uint16_t ticks) {
 
@@ -19,7 +20,8 @@ void SW_Timer_Init (SW_Timer_t * timer_p, uint16_t ticks) {
 }
 
 /*
- * Timer_Is_Timed_Out
+ * SW_Timer_Is_Timed_Out
+ * Returns TRUE if the defined timeout has passed
  */
 bool_t SW_Timer_Is_Timed_Out (SW_Timer_t * timer_p) {
     uint16_t current_tick;
@@ -52,7 +54,10 @@ void SW_Timer_Blocking_Delay_1ms (uint16_t ticks_to_wait) {
 
     final_tick = ticks_to_wait + ZHAL_Systick_Get_Tick();
 
-    while (final_tick != ZHAL_Systick_Get_Tick());  // wait until final_tick is the same as ZHAL_Systick.Tick
+    // wait until final_tick is the same as ZHAL_Systick.Tick
+    while (final_tick != ZHAL_Systick_Get_Tick()) {
+#warning "Add a watchdog reset here"
+    }
 
 }
 

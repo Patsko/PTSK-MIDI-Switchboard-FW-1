@@ -1,5 +1,5 @@
 /*
- * SW Timer
+ * Keypad
  *
  */
 

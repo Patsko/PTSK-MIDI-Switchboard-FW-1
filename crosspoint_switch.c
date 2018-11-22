@@ -72,6 +72,7 @@ void Crosspoint_Switch_Init () {
     ZHAL_GPIO_Reset_Output(CROSSPOINT_CS_PORT, CROSSPOINT_CS_PIN);
     ZHAL_GPIO_Reset_Output(CROSSPOINT_CLK_PORT, CROSSPOINT_CLK_PIN);
 
+    Crosspoint_Switch.Status = SW_STAT_IDLE;
 }
 
 
@@ -282,8 +283,10 @@ void Crosspoint_Switch_Task () {
         for (x = 0; x < CROSSPOINT_X_SWITCHES; x++) {
             for (y = 0; y < CROSSPOINT_Y_SWITCHES; y++) {
                 if (Crosspoint_Switch.Switch[x][y] == TO_BE_OPENED) {
+                    Crosspoint_Switch.Switch[x][y] = OPEN;
                     Crosspoint_Switch_Control(x, y, OPEN);
                 } else if (Crosspoint_Switch.Switch[x][y] == TO_BE_CLOSED) {
+                    Crosspoint_Switch.Switch[x][y] = CLOSED;
                     Crosspoint_Switch_Control(x, y, CLOSED);
                 }
             }
