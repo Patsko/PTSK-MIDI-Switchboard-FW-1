@@ -86,7 +86,7 @@ void Memory_Init () {
 
 /*
  * Memory_Read_Data
- * Reads data
+ * Must be continuously called by the application until returns TRUE
  */
 bool_t Memory_Read_Data (const uint16_t address, const uint8_t data[], const uint8_t bytes) {
     bool_t status = FALSE;
@@ -112,6 +112,7 @@ bool_t Memory_Read_Data (const uint16_t address, const uint8_t data[], const uin
 
 /*
  * Memory_Write_Data
+ * Must be continuously called by the application until returns TRUE
  */
 bool_t Memory_Write_Data (const uint16_t address, const uint8_t data[], const uint8_t bytes) {
     bool_t status = FALSE;

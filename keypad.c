@@ -58,7 +58,7 @@ static struct {
  * Keypad_Init
  */
 static void Keypad_Init (void) {
-    uint8_t i;
+    uint8_t i, j;
     ZHAL_GPIO_Config_t gpio_config = {
         ZHAL_GPIO_OUTPUT,
         ZHAL_GPIO_NORMAL,
@@ -75,6 +75,12 @@ static void Keypad_Init (void) {
     gpio_config.Direction = ZHAL_GPIO_INPUT;
     for (i = 0; i < KEYPAD_MAX_COLUMNS; i++) {
         ZHAL_GPIO_Config_Pin(Keypad_Pins.Input[i].Port, Keypad_Pins.Input[i].Pin, &gpio_config);
+    }
+
+    for (i = 0; i < KEYPAD_MAX_ROWS; i++) {
+        for (j = 0; j < KEYPAD_MAX_COLUMNS; j++) {
+            Button[i][j].Callback = NULL;
+        }
     }
 
     Keypad.CurrentRow = 0;
@@ -130,7 +136,9 @@ static void Keypad_Check_Button_Status (const uint8_t row, const uint8_t column,
             if (SW_Timer_Is_Timed_Out(&Button[row][column].Timer)) {
                 Button[row][column].Status = BTN_PRESSED;
                 if ((Button[row][column].Config.Mode == KEYPAD_BTN_PRESSED_ONLY) || (Button[row][column].Config.Mode == KEYPAD_BTN_PRESSED_OR_RELEASED)) {
-                    Button[row][column].Callback(row, column, KEYPAD_BTN_PRESSED);
+                    if (Button[row][column].Callback != NULL) {
+                        Button[row][column].Callback(row, column, KEYPAD_BTN_PRESSED);
+                    }
                 }
             }
         } else {
@@ -148,7 +156,9 @@ static void Keypad_Check_Button_Status (const uint8_t row, const uint8_t column,
             if (SW_Timer_Is_Timed_Out(&Button[row][column].Timer)) {
                 Button[row][column].Status = BTN_IDLE;
                 if ((Button[row][column].Config.Mode == KEYPAD_BTN_RELEASED_ONLY) || (Button[row][column].Config.Mode == KEYPAD_BTN_PRESSED_OR_RELEASED)) {
-                    Button[row][column].Callback(row, column, KEYPAD_BTN_RELEASED);
+                    if (Button[row][column].Callback != NULL) {
+                        Button[row][column].Callback(row, column, KEYPAD_BTN_RELEASED);
+                    }
                 }
             }
         } else {

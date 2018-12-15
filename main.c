@@ -36,8 +36,9 @@ void main () {
         Memory_Task();
         Keypad_Task();
         Crosspoint_Switch_Task();
+#if 0
         Debug_Monitor_Task();
-
+#endif
         TIMER_TEST();
         KEYPAD_TEST();
         APPLICATION_TEST();

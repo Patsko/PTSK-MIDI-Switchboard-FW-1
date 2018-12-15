@@ -1,6 +1,6 @@
 /*
  * BSP
- *
+ * Board related defines and typedefs
  */
 
 #ifndef BSP_H  // include guard
@@ -75,6 +75,34 @@
 #define C_SW7_PORT      ZHAL_GPIO_C
 #define C_SW7_PIN       GPIO_PIN_6
 
+
+typedef enum {
+    SW_IN_1 = 0,
+    SW_IN_2,
+    FROM_EFF_1,
+    FROM_EFF_2,
+    FROM_EFF_3,
+    FROM_EFF_11,
+    FROM_EFF_4,
+    FROM_EFF_5,
+    FROM_EFF_6,
+    FROM_EFF_7,
+    FROM_EFF_8,
+    FROM_EFF_9,
+    FROM_EFF_10,
+    GND
+} Crosspoint_Signals_X_t;
+
+typedef enum {
+    SW_OUT_1 = 0,
+    TO_EFF_1,
+    TO_EFF_2,
+    TO_EFF_3,
+    TO_EFF_4,
+    TO_EFF_5,
+    TO_EFF_6,
+    SW_OUT_2_TO_EFF_7
+} Crosspoint_Signals_Y_t;
 
 
 #endif // BSP

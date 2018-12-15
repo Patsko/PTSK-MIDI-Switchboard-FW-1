@@ -29,6 +29,18 @@ static void Debug_Init () {
 #endif
 }
 
+static char Hex_to_Ascii (uint8_t value) {
+    char result = 0;
+
+    if (value < 10) {
+        result = '0' + value;
+    } else if (value < 16) {
+        result = 'A' + (value - 10);
+    }
+    return (result);
+}
+
+
 /*
  * Debug_Message
  * Returns 1 if message was successfully sent
@@ -45,6 +57,29 @@ bool_t Debug_Message (const char * msg, const uint8_t size) {
 #endif
 }
 
+/*
+ * Debug_Send_Hex
+ * Returns 1 if message was successfully sent
+ */
+bool_t Debug_Send_Hex (const uint8_t * value, const uint8_t size) {
+    char msg[8];
+    uint8_t msg_size = 0;
+    uint8_t i;
+
+#if DEBUG_THROUGH_SERIAL
+    if (size <= 4) {
+        for (i = 0; i < size; i++) {
+            msg[msg_size++] = Hex_to_Ascii((*value) >> 4);
+            msg[msg_size++] = Hex_to_Ascii((*value) & 0x0F);
+            value++;
+        }
+
+        return (Debug_Message(msg, msg_size));
+    } else {
+        return (FALSE);
+    }
+#endif
+}
 
 /*
  * Debug_Monitor_Task

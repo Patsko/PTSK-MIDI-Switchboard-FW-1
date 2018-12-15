@@ -475,29 +475,46 @@ void APPLICATION_TEST () {
 
     switch (TEST.APPLICATION.Status) {
     case 0:
+        if (Output_Expander_Close() && Memory_Close()) {
+            Crosspoint_Switch_Init();
+            Crosspoint_Switch_Open_Switches();
+            Crosspoint_Switch_Set (SW_IN_1, SW_OUT_1, 1);    // SW_IN_1 - SW_OUT_1
+
+            TEST.APPLICATION.Status++;
+        }
+        break;
+    case 1:
+        if (Crosspoint_Switch_Close()) {
+            Output_Expander_Init();
+            Memory_Init();
+
+            TEST.APPLICATION.Status++;
+        }
+        break;
+    case 2:
         if (TEST.APPLICATION.ButtonFlag != 0) {
             if (Output_Expander_Close() && Memory_Close()) {
                 Crosspoint_Switch_Init();
+                Crosspoint_Switch_Open_Switches();
                 switch (TEST.APPLICATION.ButtonFlag) {
                 case 1:
-                    Crosspoint_Switch_Set (0, 0, 1);    // SW_IN_1 - SW_OUT_1
-                    Crosspoint_Switch_Set (0, 1, 0);    // SW_IN_1 - TO_EFF_1
-                    Crosspoint_Switch_Set (2, 0, 0);    // FROM_EFF_1 - SW_OUT_1
+                    Crosspoint_Switch_Set (SW_IN_1, TO_EFF_1, 1);
+                    Crosspoint_Switch_Set (FROM_EFF_1, SW_OUT_1, 1);
                     break;
                 case 2:
-                    Crosspoint_Switch_Set (0, 0, 0);    // SW_IN_1 - SW_OUT_1
-                    Crosspoint_Switch_Set (0, 1, 1);    // SW_IN_1 - TO_EFF_1
-                    Crosspoint_Switch_Set (2, 0, 1);    // FROM_EFF_1 - SW_OUT_1
+                    Crosspoint_Switch_Set (SW_IN_1, TO_EFF_2, 1);
+                    Crosspoint_Switch_Set (FROM_EFF_2, SW_OUT_1, 1);
                     break;
                 case 3:
-                    Crosspoint_Switch_Open_Switches();
+                    Crosspoint_Switch_Set (SW_IN_1, TO_EFF_3, 1);
+                    Crosspoint_Switch_Set (FROM_EFF_3, SW_OUT_1, 1);
                     break;
                 }
                 TEST.APPLICATION.Status++;
             }
         }
         break;
-    case 1:
+    case 3:
         if (Crosspoint_Switch_Close()) {
             Output_Expander_Init();
             Memory_Init();
@@ -521,7 +538,7 @@ void APPLICATION_TEST () {
             }
 
             TEST.APPLICATION.ButtonFlag = 0;
-            TEST.APPLICATION.Status = 0;
+            TEST.APPLICATION.Status = 2;
         }
         break;
     }
