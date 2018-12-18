@@ -27,12 +27,12 @@ struct {
     uint32_t MIDI_timeout;
     uint8_t MIDI_Message[3];
 
-    uint8_t SPI_status;
-    uint8_t SPI_data[10];
-
     uint8_t UART_Rx_count;
     uint8_t UART_inserted_bytes;
 #endif
+    uint8_t SPI_status;
+    uint8_t SPI_data[10];
+
     uint8_t TimerStatus;
     SW_Timer_t Timer;
 
@@ -138,9 +138,9 @@ void UART_TEST () {
         break;
     }
 }
+#endif
 
-
-void SPI_TEST () {
+void MEMORY_TEST () {
     uint8_t i;
     uint8_t data;
     uint8_t data_buf[4];
@@ -150,15 +150,17 @@ void SPI_TEST () {
     switch (TEST.SPI_status) {
     case 0:
         if (ZHAL_UART_Driver_Peek(&data) != 0) {
-            if (data == 'W') { // write to memory
+            if (ZHAL_UART_Driver_Put_Data ("ACK\r\n", sizeof("ACK\r\n") - 1)) {
+                ZHAL_UART_Driver_Send_Data();
+
+                if (data == 'W') { // write to memory
+                    TEST.SPI_status = 3;
+                } else if (data == 'R') {  // read from memory
+                    TEST.SPI_status = 1;
+                } else if (data == 'E') { // "erase" memory
+                    TEST.SPI_status = 4;
+                }
                 ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 3;
-            } else if (data == 'R') {  // read from memory
-                ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 1;
-            } else if (data == 'E') { // "erase" memory
-                ZHAL_UART_Driver_Get_Data(&data, 1);
-                TEST.SPI_status = 4;
             }
         }
         break;
@@ -201,7 +203,7 @@ void SPI_TEST () {
         break;
     }
 }
-#endif
+
 
 #if 0
 // Timer test with blocking delay
@@ -420,6 +422,7 @@ void CROSSPOINT_SWITCH_TEST () {
 }
 #endif
 
+#if 0
 void MIDI_TEST () {
 #if 0
         // MIDI test - when the button is pressed, sends note on, waits some time and sends note off
@@ -470,7 +473,9 @@ void MIDI_TEST () {
         }
 #endif
 }
+#endif
 
+#if 0
 void APPLICATION_TEST () {
 
     switch (TEST.APPLICATION.Status) {
@@ -543,11 +548,11 @@ void APPLICATION_TEST () {
         break;
     }
 }
+#endif
 
 
 
-
-
+#if 0
 void KEYPAD_CALLBACK (uint8_t row, uint8_t column, Keypad_Transition_t status) {
     uint8_t data;
 
@@ -576,8 +581,9 @@ void KEYPAD_CALLBACK (uint8_t row, uint8_t column, Keypad_Transition_t status) {
     }
 #endif
 }
+#endif
 
-
+#if 0
 void KEYPAD_TEST () {
     Keypad_Button_Config_t config;
 
@@ -602,4 +608,4 @@ void KEYPAD_TEST () {
         break;
     }
 }
-
+#endif

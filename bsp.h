@@ -75,8 +75,8 @@
 #define C_SW7_PORT      ZHAL_GPIO_C
 #define C_SW7_PIN       GPIO_PIN_6
 
-
-typedef enum {
+// "uint8_t enum" below is a Zilog C Compiler language extension - The enumeration data type is defined as int as per ANSI C. The C-Compiler provides language extensions to specify the enumeration data type to be other than int to save space.
+typedef uint8_t enum {
     SW_IN_1 = 0,
     SW_IN_2,
     FROM_EFF_1,
@@ -93,7 +93,7 @@ typedef enum {
     GND
 } Crosspoint_Signals_X_t;
 
-typedef enum {
+typedef uint8_t enum {
     SW_OUT_1 = 0,
     TO_EFF_1,
     TO_EFF_2,

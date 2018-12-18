@@ -14,6 +14,8 @@
  */
 
 #define DEBUG_THROUGH_SERIAL        1
+#define DEBUG_MESSAGE_ENABLE        1
+#define DEBUG_MESSAGE_TIMEOUT       5000
 
 /*
  * Typedefs

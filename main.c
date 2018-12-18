@@ -15,6 +15,7 @@
 #include "keypad.h"
 #include "crosspoint_switch.h"
 #include "debug.h"
+#include "switchboard_app.h"
 
 #warning "Test"
 #include "test.h"
@@ -30,18 +31,21 @@ void main () {
 
     Memory_Init();
     
-    while (1){
+    while (1) {
+        ZHAL_Watchdog_Reset();
 
         Output_Expander_Task();
         Memory_Task();
         Keypad_Task();
         Crosspoint_Switch_Task();
-#if 0
+        Switchboard_Task();
         Debug_Monitor_Task();
-#endif
+
         TIMER_TEST();
-        KEYPAD_TEST();
+        MEMORY_TEST();
+#if 0
         APPLICATION_TEST();
+#endif
     }
 }
 

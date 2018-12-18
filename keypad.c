@@ -135,6 +135,7 @@ static void Keypad_Check_Button_Status (const uint8_t row, const uint8_t column,
         if (is_pressed) {
             if (SW_Timer_Is_Timed_Out(&Button[row][column].Timer)) {
                 Button[row][column].Status = BTN_PRESSED;
+                SW_Timer_Init(&Button[row][column].Timer, KEYPAD_KEPT_PRESSED_TICKS);
                 if ((Button[row][column].Config.Mode == KEYPAD_BTN_PRESSED_ONLY) || (Button[row][column].Config.Mode == KEYPAD_BTN_PRESSED_OR_RELEASED)) {
                     if (Button[row][column].Callback != NULL) {
                         Button[row][column].Callback(row, column, KEYPAD_BTN_PRESSED);
@@ -149,6 +150,14 @@ static void Keypad_Check_Button_Status (const uint8_t row, const uint8_t column,
         if (is_pressed == FALSE) {
             SW_Timer_Init(&Button[row][column].Timer, KEYPAD_DEBOUNCE_TICKS);
             Button[row][column].Status = BTN_IDLE_DEBOUNCE;
+        } else if (SW_Timer_Is_Timed_Out(&Button[row][column].Timer)) {
+            Button[row][column].Status = BTN_PRESSED;
+            SW_Timer_Init(&Button[row][column].Timer, KEYPAD_KEPT_PRESSED_TICKS);
+            if ((Button[row][column].Config.Mode == KEYPAD_BTN_PRESSED_ONLY) || (Button[row][column].Config.Mode == KEYPAD_BTN_PRESSED_OR_RELEASED)) {
+                if (Button[row][column].Callback != NULL) {
+                    Button[row][column].Callback(row, column, KEYPAD_BTN_KEPT_PRESSED);
+                }
+            }
         }
         break;
     case BTN_IDLE_DEBOUNCE:

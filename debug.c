@@ -90,13 +90,17 @@ void Debug_Monitor_Task () {
     switch (DEBUG.Status) {
     case 0:
         Debug_Init();
-        SW_Timer_Init(&DEBUG.Timer, 1000);
+#if DEBUG_MESSAGE_ENABLE
+        SW_Timer_Init(&DEBUG.Timer, DEBUG_MESSAGE_TIMEOUT);
+#endif
         DEBUG.Status++;
         break;
     case 1:
+#if DEBUG_MESSAGE_ENABLE
         if ((SW_Timer_Is_Timed_Out(&DEBUG.Timer)) && (Debug_Message("Running\r\n", sizeof("Running\r\n") - 1))) {
-            SW_Timer_Init(&DEBUG.Timer, 1000);
+            SW_Timer_Init(&DEBUG.Timer, DEBUG_MESSAGE_TIMEOUT);
         }
+#endif
         break;
     }
 }

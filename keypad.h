@@ -17,7 +17,8 @@
 #define KEYPAD_MAX_COLUMNS      3   // columns are inputs
 #define KEYPAD_MAX_BUTTONS      (KEYPAD_MAX_ROWS * KEYPAD_MAX_COLUMNS)
 
-#define KEYPAD_DEBOUNCE_TICKS   50
+#define KEYPAD_DEBOUNCE_TICKS       100
+#define KEYPAD_KEPT_PRESSED_TICKS   3000
 
 #define KEYPAD_GPIO_ROWS_STRUCT                                     \
     {                                                               \
@@ -45,7 +46,8 @@ typedef enum {
 
 typedef enum {
     KEYPAD_BTN_PRESSED = 0,
-    KEYPAD_BTN_RELEASED
+    KEYPAD_BTN_RELEASED,
+    KEYPAD_BTN_KEPT_PRESSED
 } Keypad_Transition_t;
 
 typedef enum {

@@ -21,6 +21,7 @@
 <file filter-key="">.\memory.c</file>
 <file filter-key="">.\test.c</file>
 <file filter-key="">.\debug.c</file>
+<file filter-key="">.\switchboard_app.c</file>
 </files>
 
 <!-- configuration information -->

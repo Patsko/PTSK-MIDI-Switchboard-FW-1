@@ -7,7 +7,7 @@
 
 void MCU_INIT ();
 void UART_TEST ();
-void SPI_TEST ();
+void MEMORY_TEST ();
 void TIMER_TEST ();
 void CROSSPOINT_SWITCH_TEST ();
 void MIDI_TEST ();
