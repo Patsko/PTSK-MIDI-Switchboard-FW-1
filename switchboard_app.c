@@ -3,8 +3,7 @@
  *
  * Application created considering usage with guitar effects
  * 6 effects, mono, without paralleling/stereo capabilities
- * Less flexible,
- *
+ * 6 LEDs, 4 buttons
  */
 
 #include <ez8.h>
@@ -22,8 +21,8 @@
 
 // "uint8_t enum" below is a Zilog C Compiler language extension - The enumeration data type is defined as int as per ANSI C. The C-Compiler provides language extensions to specify the enumeration data type to be other than int to save space.
 typedef uint8_t enum {
-    LED_OFF = 0,
-    LED_ON
+    LED_ON = 0,
+    LED_OFF
 } LED_status_t;
 
 typedef enum {
@@ -50,6 +49,7 @@ static struct {
     SW_Timer_t LedTimer;
     uint8_t ProgramChangeStep;
     uint8_t ButtonFlag;
+    uint8_t DefaultConfig;
 
     struct {
         uint8_t Step;
@@ -70,9 +70,81 @@ static struct {
 
 
 
+static bool_t Switchboard_Default_Config () {
+    uint8_t i;
+    bool_t status = FALSE;
+
+    switch (Switchboard.DefaultConfig) {
+    case 0:
+        if (Crosspoint_Switch_Close()) {
+            Memory_Init();
+            Switchboard.DefaultConfig++;
+        }
+        break;
+    case 1:
+        // erase whole FRAM
+        if (Memory_Erase(0x0000, 2048)) {
+            Switchboard.DefaultConfig++;
+        }
+        break;
+    case 2:
+        // Resets the current signal route
+        for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
+            SignalRoute.Switch[i].X = 0xFF;
+            SignalRoute.Switch[i].Y = 0xFF;
+        }
+        SignalRoute.Switch[0].X = SW_IN_1;
+        SignalRoute.Switch[0].Y = TO_EFF_1;
+        SignalRoute.Switch[1].X = FROM_EFF_1;
+        SignalRoute.Switch[1].Y = SW_OUT_1;
+
+        Switchboard.DefaultConfig++;
+        break;
+    case 3:
+        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(0), (uint8_t *) &SignalRoute, (SWBOARD_SIGNAL_ROUTE_MAX * 2))) {
+            Switchboard.DefaultConfig++;
+        }
+        break;
+    case 4:
+        SignalRoute.Switch[0].X = SW_IN_1;
+        SignalRoute.Switch[0].Y = TO_EFF_2;
+        SignalRoute.Switch[1].X = FROM_EFF_2;
+        SignalRoute.Switch[1].Y = SW_OUT_1;
+
+        Switchboard.DefaultConfig++;
+        break;
+    case 5:
+        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(1), (uint8_t *) &SignalRoute, (SWBOARD_SIGNAL_ROUTE_MAX * 2))) {
+            Switchboard.DefaultConfig++;
+        }
+        break;
+    case 6:
+        SignalRoute.Switch[0].X = SW_IN_1;
+        SignalRoute.Switch[0].Y = TO_EFF_3;
+        SignalRoute.Switch[1].X = FROM_EFF_3;
+        SignalRoute.Switch[1].Y = SW_OUT_1;
+
+        Switchboard.DefaultConfig++;
+        break;
+    case 7:
+        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(2), (uint8_t *) &SignalRoute, (SWBOARD_SIGNAL_ROUTE_MAX * 2))) {
+            Switchboard.DefaultConfig++;
+        }
+        break;
+    case 8:
+        Switchboard.DefaultConfig = 0;
+        status = TRUE;
+        break;
+    }
+    return (status);
+}
+
+/*
+ * led - from 0 to 5
+ */
 static void LED_Control (uint8_t led, LED_status_t status) {
 
-    if ((led != 0) && (led < 7)) {
+    if (led < 6) {
         // LED turns on with logic 0
         Output_Expander_Pin (led, status);
     }
@@ -208,7 +280,7 @@ static bool_t Switchboard_Program_Change () {
         break;
     case PRG_CHNG_CLOSE_SWITCHES:
         // close the switches keeping outputs grounded
-        for (i = 0; i < 128; i++) {
+        for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
             if ((SignalRoute.Switch[i].X == 0xFF) || (SignalRoute.Switch[i].Y == 0xFF)) {
                 break;  // breaks the for loop
             } else {
@@ -346,18 +418,19 @@ static bool_t Switchboard_Program_Create () {
  */
 void Switchboard_Task () {
     Keypad_Button_Config_t config;
+    uint8_t i;
 
     switch (Switchboard.Status) {
     case 0:
     default:
-        config.Mode = KEYPAD_BTN_RELEASED_ONLY;
+        config.Mode = KEYPAD_BTN_PRESSED_ONLY;
         config.Type = KEYPAD_BTN_NORMALLY_CLOSED;
         Keypad_Config_Button (0, 0, Switchboard_Button_Callback, config);
         Keypad_Config_Button (1, 0, Switchboard_Button_Callback, config);
         Keypad_Config_Button (2, 0, Switchboard_Button_Callback, config);
         Keypad_Config_Button (0, 1, Switchboard_Button_Callback, config);
 
-        Switchboard.InitCount = 1;
+        Switchboard.InitCount = 0;
         Switchboard.Status++;
         break;
     case 1:
@@ -367,13 +440,14 @@ void Switchboard_Task () {
         break;
     case 2:
         if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
-            SW_Timer_Init(&Switchboard.LedTimer, 100);
             LED_Control(Switchboard.InitCount, LED_OFF);
             Switchboard.InitCount++;
-            if (Switchboard.InitCount > 6) {
+            if (Switchboard.InitCount >= 6) {
                 Switchboard.Status++;
 
                 Debug_Message("Initialization finished\r\n", sizeof("Initialization finished\r\n") - 1);
+            } else {
+                Switchboard.Status = 1;
             }
         }
         break;
@@ -383,6 +457,8 @@ void Switchboard_Task () {
         case 2:
         case 3:
         case 4:
+            Debug_Message("Button pressed!\r\n", sizeof("Button pressed!\r\n") - 1);
+            Switchboard.Status = 6;
 #warning "To do - read program from memory"
             break;
         case 5:
@@ -403,5 +479,114 @@ void Switchboard_Task () {
             Switchboard.Status = 3;
         }
         break;
+#warning "Test"
+
+    case 6:
+        // Resets the current signal route
+        for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
+            SignalRoute.Switch[i].X = 0xFF;
+            SignalRoute.Switch[i].Y = 0xFF;
+        }
+
+        switch (Switchboard.ButtonFlag) {
+        case 1:
+            SignalRoute.Switch[0].X = SW_IN_1;
+            SignalRoute.Switch[0].Y = TO_EFF_1;
+            SignalRoute.Switch[1].X = FROM_EFF_1;
+            SignalRoute.Switch[1].Y = SW_OUT_1;
+            break;
+        case 2:
+            SignalRoute.Switch[0].X = SW_IN_1;
+            SignalRoute.Switch[0].Y = TO_EFF_2;
+            SignalRoute.Switch[1].X = FROM_EFF_2;
+            SignalRoute.Switch[1].Y = SW_OUT_1;
+            break;
+        case 3:
+            SignalRoute.Switch[0].X = SW_IN_1;
+            SignalRoute.Switch[0].Y = TO_EFF_3;
+            SignalRoute.Switch[1].X = FROM_EFF_3;
+            SignalRoute.Switch[1].Y = SW_OUT_1;
+            break;
+        }
+        Switchboard.Status++;
+        break;
+    case 7:
+        if (Switchboard_Program_Change()) {
+            Switchboard.Status++;
+        }
+        break;
+    case 8:
+        switch (Switchboard.ButtonFlag) {
+        case 1:
+            LED_Control(0, LED_ON);
+            LED_Control(1, LED_OFF);
+            LED_Control(2, LED_OFF);
+            break;
+        case 2:
+            LED_Control(0, LED_OFF);
+            LED_Control(1, LED_ON);
+            LED_Control(2, LED_OFF);
+            break;
+        case 3:
+            LED_Control(0, LED_OFF);
+            LED_Control(1, LED_OFF);
+            LED_Control(2, LED_ON);
+            break;
+        }
+
+        Switchboard.ButtonFlag = 0;
+        Switchboard.Status = 3;
+        break;
+#if 0
+#warning "Basic switching test"
+    case 6:
+        if (Output_Expander_Close() && Memory_Close()) {
+            Crosspoint_Switch_Init();
+            Crosspoint_Switch_Open_Switches();
+            switch (Switchboard.ButtonFlag) {
+            case 1:
+                Crosspoint_Switch_Set (SW_IN_1, TO_EFF_1, 1);
+                Crosspoint_Switch_Set (FROM_EFF_1, SW_OUT_1, 1);
+                break;
+            case 2:
+                Crosspoint_Switch_Set (SW_IN_1, TO_EFF_2, 1);
+                Crosspoint_Switch_Set (FROM_EFF_2, SW_OUT_1, 1);
+                break;
+            case 3:
+                Crosspoint_Switch_Set (SW_IN_1, TO_EFF_3, 1);
+                Crosspoint_Switch_Set (FROM_EFF_3, SW_OUT_1, 1);
+                break;
+            }
+            Switchboard.Status++;
+        }
+        break;
+    case 7:
+        if (Crosspoint_Switch_Close()) {
+            Output_Expander_Init();
+            Memory_Init();
+
+            switch (Switchboard.ButtonFlag) {
+            case 1:
+                Output_Expander_Pin(1, 0);
+                Output_Expander_Pin(2, 1);
+                Output_Expander_Pin(3, 1);
+                break;
+            case 2:
+                Output_Expander_Pin(1, 1);
+                Output_Expander_Pin(2, 0);
+                Output_Expander_Pin(3, 1);
+                break;
+            case 3:
+                Output_Expander_Pin(1, 1);
+                Output_Expander_Pin(2, 1);
+                Output_Expander_Pin(3, 0);
+                break;
+            }
+
+            Switchboard.ButtonFlag = 0;
+            Switchboard.Status = 3;
+        }
+        break;
+#endif
     }
 }

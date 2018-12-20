@@ -14,7 +14,10 @@
  */
 
 #define SWBOARD_MAX_EFFECTS             6
-#define SWBOARD_SIGNAL_ROUTE_MAX        128
+#define SWBOARD_SIGNAL_ROUTE_MAX        32      // memory/SPI driver must be able to handle (SWBOARD_SIGNAL_ROUTE_MAX * 2) bytes
+
+#define SWBOARD_PROGRAM_FRAM_ADDR(x)    (x * (SWBOARD_SIGNAL_ROUTE_MAX * 2))    // each program have (SWBOARD_SIGNAL_ROUTE_MAX * 2) bytes
+
 
 /*
  * Typedefs

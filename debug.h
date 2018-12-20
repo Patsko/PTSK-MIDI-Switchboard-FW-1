@@ -16,6 +16,7 @@
 #define DEBUG_THROUGH_SERIAL        1
 #define DEBUG_MESSAGE_ENABLE        1
 #define DEBUG_MESSAGE_TIMEOUT       5000
+#define DEBUG_SERIAL_BAUD_RATE      38400
 
 /*
  * Typedefs

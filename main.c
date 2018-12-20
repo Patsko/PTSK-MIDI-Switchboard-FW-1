@@ -41,9 +41,9 @@ void main () {
         Switchboard_Task();
         Debug_Monitor_Task();
 
-        TIMER_TEST();
         MEMORY_TEST();
 #if 0
+        TIMER_TEST();
         APPLICATION_TEST();
 #endif
     }

@@ -20,6 +20,8 @@
 #define MEM_OPC_READ_DATA       0x03
 #define MEM_OPC_WRITE_DATA      0x02
 
+#define MEM_MAX_ADDR            0x7FF
+
 /*
  * Typedefs
  */

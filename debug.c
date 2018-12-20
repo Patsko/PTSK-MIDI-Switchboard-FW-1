@@ -21,7 +21,7 @@ static struct {
 static void Debug_Init () {
 #if DEBUG_THROUGH_SERIAL
     ZHAL_UART_Driver_Config_t uart_config = {
-        38400,
+        DEBUG_SERIAL_BAUD_RATE,
         NULL,
         NULL
     };
@@ -54,6 +54,8 @@ bool_t Debug_Message (const char * msg, const uint8_t size) {
     } else {
         return (FALSE);
     }
+#else
+    return (TRUE);
 #endif
 }
 
@@ -67,17 +69,15 @@ bool_t Debug_Send_Hex (const uint8_t * value, const uint8_t size) {
     uint8_t i;
 
 #if DEBUG_THROUGH_SERIAL
-    if (size <= 4) {
-        for (i = 0; i < size; i++) {
-            msg[msg_size++] = Hex_to_Ascii((*value) >> 4);
-            msg[msg_size++] = Hex_to_Ascii((*value) & 0x0F);
-            value++;
-        }
-
-        return (Debug_Message(msg, msg_size));
-    } else {
-        return (FALSE);
+    for (i = 0; i < size; i++) {
+        msg[msg_size++] = Hex_to_Ascii((*value) >> 4);
+        msg[msg_size++] = Hex_to_Ascii((*value) & 0x0F);
+        value++;
     }
+
+    return (Debug_Message(msg, msg_size));
+#else
+    return (TRUE);
 #endif
 }
 
