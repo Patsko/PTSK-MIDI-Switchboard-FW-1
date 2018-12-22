@@ -266,9 +266,9 @@ static void LED_Control_Program_Creation () {
         break;
     case 3:
         if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
-            if ((Switchboard.LedCount < SWBOARD_MAX_EFFECTS) || (Switchboard.ProgramCreate.Sequence[Switchboard.LedCount + 1] != PRG_UNDEFINED)) {
-                Switchboard.LedCount++;
-                Switchboard.LedStep = 0;
+            Switchboard.LedCount++;
+            if ((Switchboard.LedCount < SWBOARD_MAX_EFFECTS) && (Switchboard.ProgramCreate.Sequence[Switchboard.LedCount] != PRG_UNDEFINED)) {
+                Switchboard.LedStep = 1;
             } else {
                 SW_Timer_Init(&Switchboard.LedTimer, 1000);
                 Switchboard.LedStep++;
@@ -277,7 +277,6 @@ static void LED_Control_Program_Creation () {
         break;
     case 4:
         if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
-            Switchboard.LedCount = 0;
             Switchboard.LedStep = 0;
         }
         break;
@@ -343,7 +342,7 @@ static void Switchboard_Map_Signal_Route () {
         Program.Switch[i].Y = 0xFF;
     }
 
-    if (Switchboard.ProgramCreate.CurrentEffect == PRG_UNDEFINED) {
+    if (Switchboard.ProgramCreate.CurrentEffect == PRG_UNDEFINED) { // if no effect was inserted yet, the switchboard will be on bypass mode (IN -> OUT)
         Program.Switch[0].X = SW_IN_1;
         Program.Switch[0].Y = SW_OUT_1;
     } else {
@@ -462,13 +461,14 @@ static bool_t Switchboard_Program_Change () {
 static bool_t Switchboard_Program_Create () {
     bool_t finished = FALSE;
     uint8_t i;
+    Program_Effect_t last_effect;
 
     switch (Switchboard.ProgramCreate.Step) {
     case 0:
     default:
         Debug_Message("Program create\r\n", sizeof("Program create\r\n") - 1);
 
-        SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 10000);
+        SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
 
         Switchboard.ProgramCreate.SequenceIndex = 0;
         for (i = 0; i < SWBOARD_MAX_EFFECTS; i++) {
@@ -477,9 +477,17 @@ static bool_t Switchboard_Program_Create () {
         Switchboard.ProgramCreate.CurrentEffect = PRG_UNDEFINED;
         Switchboard_Map_Signal_Route();
 
+        LED_All_Off();
+        Switchboard.LedStep = 0;
+
         Switchboard.ProgramCreate.Step = 1;
         break;
     case 1:
+        if (Switchboard_Program_Change()) {
+            Switchboard.ProgramCreate.Step = 2;
+        }
+        break;
+    case 2:
         switch (Switchboard.ButtonFlag) {
         case 1: // OK
             if (Switchboard.ProgramCreate.SequenceIndex < SWBOARD_MAX_EFFECTS) {
@@ -487,59 +495,83 @@ static bool_t Switchboard_Program_Create () {
                 if (Switchboard_Is_Effect_Available(Switchboard.ProgramCreate.CurrentEffect)) {
                     Switchboard.ProgramCreate.Sequence[Switchboard.ProgramCreate.SequenceIndex] = Switchboard.ProgramCreate.CurrentEffect;
                     Switchboard.ProgramCreate.SequenceIndex++;
+
+                    Debug_Message("Effect added\r\n", sizeof("Effect added\r\n") - 1);
                 }
             }
 
-            SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 10000);
+            SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
             break;
         case 2: // down
             i = Switchboard.ProgramCreate.CurrentEffect;
+            last_effect = Switchboard.ProgramCreate.CurrentEffect;
             // checks if any downward effect is available
             while (Switchboard.ProgramCreate.CurrentEffect > PRG_EFF_1) {
                 i--;
                 if (Switchboard_Is_Effect_Available(i)) {
                     Switchboard.ProgramCreate.CurrentEffect = i;
                     Switchboard_Map_Signal_Route();
-                    Switchboard.ProgramCreate.Step = 2;
+                    Switchboard.ProgramCreate.Step = 1;
                     break;  // breaks the loop
                 }
             }
 
-            SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 10000);
+            if (last_effect != PRG_UNDEFINED) {
+                LED_Change_Status((last_effect - 1), LED_OFF);
+            }
+            LED_Change_Status((Switchboard.ProgramCreate.CurrentEffect - 1), LED_ON);   // PRG_EFF_1 turns led 0 on
+
+            Debug_Message("Down\r\n", sizeof("Down\r\n") - 1);
+
+            SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
             break;
         case 3: // up
             i = Switchboard.ProgramCreate.CurrentEffect;
+            last_effect = Switchboard.ProgramCreate.CurrentEffect;
             // checks if any upward effect is available
             while (Switchboard.ProgramCreate.CurrentEffect < SWBOARD_MAX_EFFECTS) {
                 i++;
                 if (Switchboard_Is_Effect_Available(i)) {
                     Switchboard.ProgramCreate.CurrentEffect = i;
                     Switchboard_Map_Signal_Route();
-                    Switchboard.ProgramCreate.Step = 2;
+                    Switchboard.ProgramCreate.Step = 1;
                     break;  // breaks the loop
                 }
             }
 
-            SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 10000);
-            break;
-        case 4: // cancel
-            finished = 1;
+            if (last_effect != PRG_UNDEFINED) {
+                LED_Change_Status((last_effect - 1), LED_OFF);
+            }
+            LED_Change_Status((Switchboard.ProgramCreate.CurrentEffect - 1), LED_ON);   // PRG_EFF_1 turns led 0 on
+
+            Debug_Message("Up\r\n", sizeof("Up\r\n") - 1);
+
+            SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
             break;
         case 5: // OK - kept pressed
 #warning "To do - save in memory"
 
+            Debug_Message("Program creation finished\r\n", sizeof("Program creation finished\r\n") - 1);
+            Switchboard.ProgramCreate.Step = 0;
+            finished = 1;
+            break;
+        case 8: // cancel - kept pressed
+#warning "To do - read original from memory"
+
+            Debug_Message("Program creation cancelled\r\n", sizeof("Program creation cancelled\r\n") - 1);
+            Switchboard.ProgramCreate.Step = 0;
             finished = 1;
             break;
         }
+        Switchboard.ButtonFlag = 0;
 
         // timeout if no button is pressed
         if (SW_Timer_Is_Timed_Out(&Switchboard.ProgramCreate.Timer)) {
+#warning "To do - save in memory OR NOT"
+
+            Debug_Message("Program creation timeout\r\n", sizeof("Program creation timeout\r\n") - 1);
             Switchboard.ProgramCreate.Step = 0;
-        }
-        break;
-    case 2:
-        if (Switchboard_Program_Change()) {
-            Switchboard.ProgramCreate.Step = 1;
+            finished = 1;
         }
         break;
     }
@@ -607,6 +639,8 @@ void Switchboard_Task () {
         case 6:
         case 7:
         case 8:
+            Switchboard.CurrentProgram = Switchboard.ButtonFlag - 5;
+            Switchboard.ButtonFlag = 0;
             Switchboard.Status = 5;
             break;
         }
@@ -618,8 +652,10 @@ void Switchboard_Task () {
         break;
     case 5:
         if (Switchboard_Program_Create()) {
+            Switchboard.LedStep = 0;
             Switchboard.Status = 3;
         }
+        LED_Control_Program_Creation();
         break;
 
     case 6:
