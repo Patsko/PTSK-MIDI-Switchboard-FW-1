@@ -8,6 +8,7 @@
 
 #include <ez8.h>
 #include <stdio.h>
+#include <string.h>
 #include "zhal.h"
 #include "bsp.h"
 #include "sw_timer.h"
@@ -24,6 +25,17 @@ typedef uint8_t enum {
     LED_ON = 0,
     LED_OFF
 } LED_status_t;
+
+typedef uint8_t enum {
+    LED_CFG_OFF = 0,
+    LED_CFG_CONTINUOUS,
+    LED_CFG_BLINK_1,
+    LED_CFG_BLINK_2,
+    LED_CFG_BLINK_3,
+    LED_CFG_BLINK_4,
+    LED_CFG_BLINK_5,
+    LED_CFG_BLINK_6
+} LED_config_t;
 
 typedef enum {
     PRG_CHNG_INIT = 0,
@@ -50,6 +62,10 @@ static struct {
     uint8_t ProgramChangeStep;
     uint8_t ButtonFlag;
     uint8_t DefaultConfig;
+    uint8_t CurrentProgram;
+    uint8_t LedStep;
+    LED_config_t LedConfig;
+    uint8_t LedCount;
 
     struct {
         uint8_t Step;
@@ -61,11 +77,13 @@ static struct {
 } Switchboard;
 
 static struct {
+    char Name[SWBOARD_PROGRAM_NAME_SIZE];
     struct {
         Crosspoint_Signals_X_t X;
         Crosspoint_Signals_Y_t Y;
     } Switch[SWBOARD_SIGNAL_ROUTE_MAX];
-} SignalRoute;
+    LED_config_t LED[SWBOARD_LEDS];     // each value on the array is related to a specific LED
+} Program;
 
 
 
@@ -78,6 +96,7 @@ static bool_t Switchboard_Default_Config () {
     case 0:
         if (Crosspoint_Switch_Close()) {
             Memory_Init();
+            Debug_Message("Default config\r\n", sizeof("Default config\r\n") - 1);
             Switchboard.DefaultConfig++;
         }
         break;
@@ -90,48 +109,64 @@ static bool_t Switchboard_Default_Config () {
     case 2:
         // Resets the current signal route
         for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
-            SignalRoute.Switch[i].X = 0xFF;
-            SignalRoute.Switch[i].Y = 0xFF;
+            Program.Switch[i].X = 0xFF;
+            Program.Switch[i].Y = 0xFF;
         }
-        SignalRoute.Switch[0].X = SW_IN_1;
-        SignalRoute.Switch[0].Y = TO_EFF_1;
-        SignalRoute.Switch[1].X = FROM_EFF_1;
-        SignalRoute.Switch[1].Y = SW_OUT_1;
+        Program.Switch[0].X = SW_IN_1;
+        Program.Switch[0].Y = TO_EFF_1;
+        Program.Switch[1].X = FROM_EFF_1;
+        Program.Switch[1].Y = SW_OUT_1;
+        strcpy(Program.Name, "Default 1");
+        for (i = 0; i < SWBOARD_LEDS; i++) {
+            Program.LED[i] = LED_CFG_OFF;
+        }
+        Program.LED[0] = LED_CFG_BLINK_1;
 
         Switchboard.DefaultConfig++;
         break;
     case 3:
-        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(0), (uint8_t *) &SignalRoute, (SWBOARD_SIGNAL_ROUTE_MAX * 2))) {
+        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(0), (uint8_t *) &Program, SWBOARD_PROGRAM_SIZE)) {
             Switchboard.DefaultConfig++;
         }
         break;
     case 4:
-        SignalRoute.Switch[0].X = SW_IN_1;
-        SignalRoute.Switch[0].Y = TO_EFF_2;
-        SignalRoute.Switch[1].X = FROM_EFF_2;
-        SignalRoute.Switch[1].Y = SW_OUT_1;
+        Program.Switch[0].X = SW_IN_1;
+        Program.Switch[0].Y = TO_EFF_2;
+        Program.Switch[1].X = FROM_EFF_2;
+        Program.Switch[1].Y = SW_OUT_1;
+        strcpy(Program.Name, "Default 2");
+        for (i = 0; i < SWBOARD_LEDS; i++) {
+            Program.LED[i] = LED_CFG_OFF;
+        }
+        Program.LED[1] = LED_CFG_BLINK_1;
 
         Switchboard.DefaultConfig++;
         break;
     case 5:
-        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(1), (uint8_t *) &SignalRoute, (SWBOARD_SIGNAL_ROUTE_MAX * 2))) {
+        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(1), (uint8_t *) &Program, SWBOARD_PROGRAM_SIZE)) {
             Switchboard.DefaultConfig++;
         }
         break;
     case 6:
-        SignalRoute.Switch[0].X = SW_IN_1;
-        SignalRoute.Switch[0].Y = TO_EFF_3;
-        SignalRoute.Switch[1].X = FROM_EFF_3;
-        SignalRoute.Switch[1].Y = SW_OUT_1;
+        Program.Switch[0].X = SW_IN_1;
+        Program.Switch[0].Y = TO_EFF_3;
+        Program.Switch[1].X = FROM_EFF_3;
+        Program.Switch[1].Y = SW_OUT_1;
+        strcpy(Program.Name, "Default 3");
+        for (i = 0; i < SWBOARD_LEDS; i++) {
+            Program.LED[i] = LED_CFG_OFF;
+        }
+        Program.LED[2] = LED_CFG_BLINK_1;
 
         Switchboard.DefaultConfig++;
         break;
     case 7:
-        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(2), (uint8_t *) &SignalRoute, (SWBOARD_SIGNAL_ROUTE_MAX * 2))) {
+        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(2), (uint8_t *) &Program, SWBOARD_PROGRAM_SIZE)) {
             Switchboard.DefaultConfig++;
         }
         break;
     case 8:
+        Debug_Message("Default config finished\r\n", sizeof("Default config finished\r\n") - 1);
         Switchboard.DefaultConfig = 0;
         status = TRUE;
         break;
@@ -142,13 +177,116 @@ static bool_t Switchboard_Default_Config () {
 /*
  * led - from 0 to 5
  */
-static void LED_Control (uint8_t led, LED_status_t status) {
+static void LED_Change_Status (uint8_t led, LED_status_t status) {
 
     if (led < 6) {
         // LED turns on with logic 0
         Output_Expander_Pin (led, status);
     }
 }
+
+static void LED_All_Off () {
+    uint8_t i;
+
+    for (i = 0; i < SWBOARD_LEDS; i++) {
+        Output_Expander_Pin (i, LED_OFF);
+    }
+}
+
+/*
+ * LED control during normal operation
+ * Turns on LEDs sequentially during program change, from LED_CFG_CONTINUOUS to LED_CFG_BLINK_6, at 500 ticks interval between each one
+ */
+static void LED_Control () {
+    uint8_t i;
+
+    switch (Switchboard.LedStep) {
+    case 0:
+        LED_All_Off();
+        Switchboard.LedConfig = LED_CFG_CONTINUOUS;
+        Switchboard.LedStep++;
+        break;
+    case 1:
+        for (i = 0; i < SWBOARD_LEDS; i++) {
+            if (Program.LED[i] == Switchboard.LedConfig) {  // Program.LED[0] holds the LED 0 configuration, for example
+                LED_Change_Status(i, LED_ON);
+            }
+        }
+        SW_Timer_Init(&Switchboard.LedTimer, 500);
+        Switchboard.LedStep++;
+        break;
+    case 2:
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            if (Switchboard.LedConfig < LED_CFG_BLINK_6) {
+                Switchboard.LedConfig++;
+                Switchboard.LedStep = 1;
+            } else {
+                Switchboard.LedStep++;
+            }
+        }
+        break;
+    case 3: // finished
+        break;
+    default:
+        Switchboard.LedStep = 0;
+        break;
+    }
+}
+
+/*
+ * LED blinking control during program creation
+ */
+static void LED_Control_Program_Creation () {
+    uint8_t i;
+
+    switch (Switchboard.LedStep) {
+    case 0:
+        Switchboard.LedCount = 0;
+        Switchboard.LedStep++;
+        break;
+    case 1:
+        for (i = Switchboard.LedCount; i < SWBOARD_LEDS; i++) {
+            if (Switchboard.ProgramCreate.Sequence[i] != PRG_UNDEFINED) {
+                LED_Change_Status((Switchboard.ProgramCreate.Sequence[i] - 1), LED_ON);   // PRG_EFF_1 turns led 0 on
+            }
+        }
+        SW_Timer_Init(&Switchboard.LedTimer, 500);
+        Switchboard.LedStep++;
+        break;
+    case 2:
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            for (i = Switchboard.LedCount; i < SWBOARD_LEDS; i++) {
+                if (Switchboard.ProgramCreate.Sequence[i] != PRG_UNDEFINED) {
+                    LED_Change_Status((Switchboard.ProgramCreate.Sequence[i] - 1), LED_OFF);   // PRG_EFF_1 turns led 0 off
+                }
+            }
+            SW_Timer_Init(&Switchboard.LedTimer, 500);
+            Switchboard.LedStep++;
+        }
+        break;
+    case 3:
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            if ((Switchboard.LedCount < SWBOARD_MAX_EFFECTS) || (Switchboard.ProgramCreate.Sequence[Switchboard.LedCount + 1] != PRG_UNDEFINED)) {
+                Switchboard.LedCount++;
+                Switchboard.LedStep = 0;
+            } else {
+                SW_Timer_Init(&Switchboard.LedTimer, 1000);
+                Switchboard.LedStep++;
+            }
+        }
+        break;
+    case 4:
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            Switchboard.LedCount = 0;
+            Switchboard.LedStep = 0;
+        }
+        break;
+    default:
+        Switchboard.LedStep = 0;
+        break;
+    }
+}
+
 
 
 
@@ -201,15 +339,15 @@ static void Switchboard_Map_Signal_Route () {
 
     // Resets the current signal route
     for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
-        SignalRoute.Switch[i].X = 0xFF;
-        SignalRoute.Switch[i].Y = 0xFF;
+        Program.Switch[i].X = 0xFF;
+        Program.Switch[i].Y = 0xFF;
     }
 
     if (Switchboard.ProgramCreate.CurrentEffect == PRG_UNDEFINED) {
-        SignalRoute.Switch[0].X = SW_IN_1;
-        SignalRoute.Switch[0].Y = SW_OUT_1;
+        Program.Switch[0].X = SW_IN_1;
+        Program.Switch[0].Y = SW_OUT_1;
     } else {
-        SignalRoute.Switch[0].X = SW_IN_1;
+        Program.Switch[0].X = SW_IN_1;
 
         for (i = 0; i < SWBOARD_MAX_EFFECTS; i++) {
             switch (Switchboard.ProgramCreate.Sequence[i]) {
@@ -217,33 +355,33 @@ static void Switchboard_Map_Signal_Route () {
             default:
                 break;
             case PRG_EFF_1:
-                SignalRoute.Switch[i].Y = TO_EFF_1;
-                SignalRoute.Switch[i + 1].X = FROM_EFF_1;
+                Program.Switch[i].Y = TO_EFF_1;
+                Program.Switch[i + 1].X = FROM_EFF_1;
                 break;
             case PRG_EFF_2:
-                SignalRoute.Switch[i].Y = TO_EFF_2;
-                SignalRoute.Switch[i + 1].X = FROM_EFF_2;
+                Program.Switch[i].Y = TO_EFF_2;
+                Program.Switch[i + 1].X = FROM_EFF_2;
                 break;
             case PRG_EFF_3:
-                SignalRoute.Switch[i].Y = TO_EFF_3;
-                SignalRoute.Switch[i + 1].X = FROM_EFF_3;
+                Program.Switch[i].Y = TO_EFF_3;
+                Program.Switch[i + 1].X = FROM_EFF_3;
                 break;
             case PRG_EFF_4:
-                SignalRoute.Switch[i].Y = TO_EFF_4;
-                SignalRoute.Switch[i + 1].X = FROM_EFF_4;
+                Program.Switch[i].Y = TO_EFF_4;
+                Program.Switch[i + 1].X = FROM_EFF_4;
                 break;
             case PRG_EFF_5:
-                SignalRoute.Switch[i].Y = TO_EFF_5;
-                SignalRoute.Switch[i + 1].X = FROM_EFF_5;
+                Program.Switch[i].Y = TO_EFF_5;
+                Program.Switch[i + 1].X = FROM_EFF_5;
                 break;
             case PRG_EFF_6:
-                SignalRoute.Switch[i].Y = TO_EFF_6;
-                SignalRoute.Switch[i + 1].X = FROM_EFF_6;
+                Program.Switch[i].Y = TO_EFF_6;
+                Program.Switch[i + 1].X = FROM_EFF_6;
                 break;
             }
         }
 
-        SignalRoute.Switch[i].Y = SW_OUT_1;
+        Program.Switch[i].Y = SW_OUT_1;
     }
 }
 
@@ -281,10 +419,10 @@ static bool_t Switchboard_Program_Change () {
     case PRG_CHNG_CLOSE_SWITCHES:
         // close the switches keeping outputs grounded
         for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
-            if ((SignalRoute.Switch[i].X == 0xFF) || (SignalRoute.Switch[i].Y == 0xFF)) {
+            if ((Program.Switch[i].X == 0xFF) || (Program.Switch[i].Y == 0xFF)) {
                 break;  // breaks the for loop
             } else {
-                Crosspoint_Switch_Set (SignalRoute.Switch[i].X, SignalRoute.Switch[i].Y, 1);
+                Crosspoint_Switch_Set (Program.Switch[i].X, Program.Switch[i].Y, 1);
             }
         }
 
@@ -435,12 +573,12 @@ void Switchboard_Task () {
         break;
     case 1:
         SW_Timer_Init(&Switchboard.LedTimer, 100);
-        LED_Control(Switchboard.InitCount, LED_ON);
+        LED_Change_Status(Switchboard.InitCount, LED_ON);
         Switchboard.Status++;
         break;
     case 2:
         if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
-            LED_Control(Switchboard.InitCount, LED_OFF);
+            LED_Change_Status(Switchboard.InitCount, LED_OFF);
             Switchboard.InitCount++;
             if (Switchboard.InitCount >= 6) {
                 Switchboard.Status++;
@@ -452,12 +590,16 @@ void Switchboard_Task () {
         }
         break;
     case 3:
+        LED_Control();
+
         switch (Switchboard.ButtonFlag) {
         case 1:
         case 2:
         case 3:
         case 4:
             Debug_Message("Button pressed!\r\n", sizeof("Button pressed!\r\n") - 1);
+            Switchboard.CurrentProgram = Switchboard.ButtonFlag - 1;
+            Switchboard.ButtonFlag = 0;
             Switchboard.Status = 6;
 #warning "To do - read program from memory"
             break;
@@ -479,33 +621,57 @@ void Switchboard_Task () {
             Switchboard.Status = 3;
         }
         break;
+
+    case 6:
+        if (Memory_Read_Data(SWBOARD_PROGRAM_FRAM_ADDR(Switchboard.CurrentProgram), (uint8_t *) &Program, SWBOARD_PROGRAM_SIZE)) {
+            Switchboard.Status++;
+        }
+        break;
+    case 7:
+        if (Switchboard_Program_Change()) {
+            Switchboard.LedStep = 0;
+            Switchboard.Status = 3;
+        }
+        break;
+#if 0
+    case 8:
+        LED_All_Off();
+        for (i = 0; i < SWBOARD_LEDS; i++) {
+            if (Program.LED[i] != LED_CFG_OFF) {
+                LED_Change_Status(i, LED_ON);
+            }
+        }
+        Switchboard.Status = 3;
+        break;
+#endif
+#if 0
 #warning "Test"
 
     case 6:
         // Resets the current signal route
         for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
-            SignalRoute.Switch[i].X = 0xFF;
-            SignalRoute.Switch[i].Y = 0xFF;
+            Program.Switch[i].X = 0xFF;
+            Program.Switch[i].Y = 0xFF;
         }
 
         switch (Switchboard.ButtonFlag) {
         case 1:
-            SignalRoute.Switch[0].X = SW_IN_1;
-            SignalRoute.Switch[0].Y = TO_EFF_1;
-            SignalRoute.Switch[1].X = FROM_EFF_1;
-            SignalRoute.Switch[1].Y = SW_OUT_1;
+            Program.Switch[0].X = SW_IN_1;
+            Program.Switch[0].Y = TO_EFF_1;
+            Program.Switch[1].X = FROM_EFF_1;
+            Program.Switch[1].Y = SW_OUT_1;
             break;
         case 2:
-            SignalRoute.Switch[0].X = SW_IN_1;
-            SignalRoute.Switch[0].Y = TO_EFF_2;
-            SignalRoute.Switch[1].X = FROM_EFF_2;
-            SignalRoute.Switch[1].Y = SW_OUT_1;
+            Program.Switch[0].X = SW_IN_1;
+            Program.Switch[0].Y = TO_EFF_2;
+            Program.Switch[1].X = FROM_EFF_2;
+            Program.Switch[1].Y = SW_OUT_1;
             break;
         case 3:
-            SignalRoute.Switch[0].X = SW_IN_1;
-            SignalRoute.Switch[0].Y = TO_EFF_3;
-            SignalRoute.Switch[1].X = FROM_EFF_3;
-            SignalRoute.Switch[1].Y = SW_OUT_1;
+            Program.Switch[0].X = SW_IN_1;
+            Program.Switch[0].Y = TO_EFF_3;
+            Program.Switch[1].X = FROM_EFF_3;
+            Program.Switch[1].Y = SW_OUT_1;
             break;
         }
         Switchboard.Status++;
@@ -518,24 +684,30 @@ void Switchboard_Task () {
     case 8:
         switch (Switchboard.ButtonFlag) {
         case 1:
-            LED_Control(0, LED_ON);
-            LED_Control(1, LED_OFF);
-            LED_Control(2, LED_OFF);
+            LED_Change_Status(0, LED_ON);
+            LED_Change_Status(1, LED_OFF);
+            LED_Change_Status(2, LED_OFF);
             break;
         case 2:
-            LED_Control(0, LED_OFF);
-            LED_Control(1, LED_ON);
-            LED_Control(2, LED_OFF);
+            LED_Change_Status(0, LED_OFF);
+            LED_Change_Status(1, LED_ON);
+            LED_Change_Status(2, LED_OFF);
             break;
         case 3:
-            LED_Control(0, LED_OFF);
-            LED_Control(1, LED_OFF);
-            LED_Control(2, LED_ON);
+            LED_Change_Status(0, LED_OFF);
+            LED_Change_Status(1, LED_OFF);
+            LED_Change_Status(2, LED_ON);
             break;
         }
 
         Switchboard.ButtonFlag = 0;
         Switchboard.Status = 3;
+        break;
+#endif
+    case 9:
+        if (Switchboard_Default_Config()) {
+            Switchboard.Status = 3;
+        }
         break;
 #if 0
 #warning "Basic switching test"
@@ -589,4 +761,9 @@ void Switchboard_Task () {
         break;
 #endif
     }
+}
+
+#warning "Test"
+void Switchboard_Test () {
+    Switchboard.Status = 9;
 }

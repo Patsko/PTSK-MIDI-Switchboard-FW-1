@@ -13,11 +13,18 @@
  * Application defines
  */
 
+#define SWBOARD_LEDS                    6
+
+#define SWBOARD_PROGRAM_NAME_SIZE       10
+
 #define SWBOARD_MAX_EFFECTS             6
-#define SWBOARD_SIGNAL_ROUTE_MAX        32      // memory/SPI driver must be able to handle (SWBOARD_SIGNAL_ROUTE_MAX * 2) bytes
+#define SWBOARD_SIGNAL_ROUTE_MAX        32
 
-#define SWBOARD_PROGRAM_FRAM_ADDR(x)    (x * (SWBOARD_SIGNAL_ROUTE_MAX * 2))    // each program have (SWBOARD_SIGNAL_ROUTE_MAX * 2) bytes
+#define SWBOARD_MAX_PROGRAMS            8
+#define SWBOARD_PROGRAM_SIZE            ((SWBOARD_SIGNAL_ROUTE_MAX * 2) + SWBOARD_PROGRAM_NAME_SIZE + SWBOARD_LEDS)  // memory/SPI driver must be able to handle SWBOARD_PROGRAM_SIZE bytes
+#define SWBOARD_PROGRAM_FRAM_ADDR(x)    (x * SWBOARD_PROGRAM_SIZE)    // each program have (SWBOARD_SIGNAL_ROUTE_MAX * 2) bytes
 
+#define SWBOARD_CURR_PROGRAM_FRAM_ADDR
 
 /*
  * Typedefs
@@ -29,6 +36,7 @@
  */
 
 void Switchboard_Task (void);
+void Switchboard_Test (void);
 
 
 

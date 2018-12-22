@@ -152,7 +152,7 @@ bool_t Memory_Write_Data (const uint16_t address, const uint8_t data[], const ui
  * Erases n bytes starting from base address
  * Must be continuously called by the application until returns TRUE
  */
-bool_t Memory_Erase (const uint16_t address, const uint8_t bytes) {
+bool_t Memory_Erase (const uint16_t address, const uint16_t bytes) {
     bool_t status = FALSE;
 
     if (address > MEM_MAX_ADDR) {

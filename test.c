@@ -12,10 +12,8 @@
 #include "memory.h"
 #include "keypad.h"
 #include "crosspoint_switch.h"
+#include "switchboard_app.h"
 
-struct {
-    unsigned char Status;
-} MATRIX;
 
 struct {
 #if 0
@@ -31,8 +29,10 @@ struct {
     uint8_t UART_inserted_bytes;
 #endif
     uint8_t SPI_status;
-    uint8_t SPI_data[10];
-
+    uint8_t SPI_data[30];
+    uint16_t SPI_address;
+    uint8_t SPI_bytes_to_read;
+#if 0
     uint8_t TimerStatus;
     SW_Timer_t Timer;
 
@@ -43,9 +43,10 @@ struct {
         uint8_t Status;
         uint8_t ButtonFlag;
     } APPLICATION;
+#endif
 } TEST;
 
-
+#if 0
 char Message[] = "Loopback test!\r\n";
 
 
@@ -54,7 +55,7 @@ struct {
     uint8_t Status;
     bool_t IsPressed;
 } BUTTON;
-
+#endif
 
 #if 0
 void MCU_INIT () {
@@ -145,6 +146,8 @@ void MEMORY_TEST () {
     uint8_t data;
     uint8_t data_buf[4];
     uint16_t data16;
+    uint16_t address;
+    uint8_t bytes;
 
     // Send byte through SPI when button is pressed
     switch (TEST.SPI_status) {
@@ -156,23 +159,32 @@ void MEMORY_TEST () {
                 if (data == 'W') { // write to memory
                     TEST.SPI_status = 3;
                 } else if (data == 'R') {  // read from memory
-                    TEST.SPI_status = 1;
+                    TEST.SPI_status = 5;
                 } else if (data == 'E') { // "erase" memory
                     TEST.SPI_status = 4;
+                } else if (data == 'D') {
+                    Switchboard_Test();
                 }
                 ZHAL_UART_Driver_Get_Data(&data, 1);
             }
         }
         break;
 
+    case 5:
+        if (ZHAL_UART_Driver_Peek(&data) == 3) {
+            ZHAL_UART_Driver_Get_Data(&TEST.SPI_address, 2);
+            ZHAL_UART_Driver_Get_Data(&TEST.SPI_bytes_to_read, 2);
+            TEST.SPI_status = 1;
+        }
+        break;
     case 1: // FRAM read
-        if (Memory_Read_Data(0x00, &TEST.SPI_data, 4)) {
+        if (Memory_Read_Data(TEST.SPI_address, &TEST.SPI_data, TEST.SPI_bytes_to_read)) {
             TEST.SPI_status++;
         }
         break;
     case 2:
         if (ZHAL_UART_Driver_Put_Data ("Read finished", sizeof("Read finished") - 1)) {
-            ZHAL_UART_Driver_Put_Data (&TEST.SPI_data, 4);
+            ZHAL_UART_Driver_Put_Data (&TEST.SPI_data, TEST.SPI_bytes_to_read);
             ZHAL_UART_Driver_Send_Data();
             TEST.SPI_status = 0;
         }
@@ -230,6 +242,7 @@ void TIMER_TEST () {
 }
 #endif
 
+#if 0
 // Timer test WITHOUT blocking delay
 void TIMER_TEST () {
     uint8_t data;
@@ -254,7 +267,7 @@ void TIMER_TEST () {
         break;
     }
 }
-
+#endif
 #if 0
 void WAIT () {
     uint8_t count = 100;
