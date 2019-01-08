@@ -43,7 +43,20 @@ typedef enum {
     PRG_CHNG_CLOSE_SWITCHES,
     PRG_CHNG_SET_OUTPUT,
     PRG_CHNG_FINISH
-} Program_Change_t;
+} Program_Change_Step_t;
+
+typedef enum {
+    PRG_CRTE_INIT = 0,
+    PRG_CRTE_INIT_LED,
+    PRG_CRTE_INIT_LED_BLINK,
+    PRG_CRTE_PROGRAM_CHANGE,
+    PRG_CRTE_EXECUTING,
+    PRG_CRTE_SAVE,
+    PRG_CRTE_OK_LED,
+    PRG_CRTE_OK_LED_BLINK,
+    PRG_CRTE_CANCEL_LED,
+    PRG_CRTE_CANCEL_LED_BLINK
+} Program_Create_Step_t;
 
 typedef enum {
     PRG_UNDEFINED = 0,
@@ -55,24 +68,37 @@ typedef enum {
     PRG_EFF_6
 } Program_Effect_t;
 
+typedef enum {
+    BTN_1_PRESS = 1,
+    BTN_2_PRESS,
+    BTN_3_PRESS,
+    BTN_4_PRESS,
+    BTN_1_LONG_PRESS,
+    BTN_2_LONG_PRESS,
+    BTN_3_LONG_PRESS,
+    BTN_4_LONG_PRESS
+} Button_Flag_t;
+
 static struct {
     uint8_t Status;
-    uint8_t InitCount;
+    uint8_t LedBlinkCounter;
+    uint8_t InitStatus;
     SW_Timer_t LedTimer;
-    uint8_t ProgramChangeStep;
-    uint8_t ButtonFlag;
+    Program_Change_Step_t ProgramChangeStep;
+    Button_Flag_t ButtonFlag;
     uint8_t DefaultConfig;
-    uint8_t CurrentProgram;
+    uint8_t CurrentProgram; // from 0 to SWBOARD_MAX_PROGRAMS - 1
+
     uint8_t LedStep;
     LED_config_t LedConfig;
     uint8_t LedCount;
 
     struct {
-        uint8_t Step;
+        Program_Create_Step_t Step;
         SW_Timer_t Timer;
         Program_Effect_t CurrentEffect;
         Program_Effect_t Sequence[SWBOARD_MAX_EFFECTS];
-        uint8_t SequenceIndex;
+        uint8_t SequenceIndex;  // from 0 to SWBOARD_MAX_EFFECTS - 1
     } ProgramCreate;
 } Switchboard;
 
@@ -87,7 +113,11 @@ static struct {
 
 
 
-
+/*
+ * Switchboard_Default_Config
+ * Erases whole FRAM, creates and saves the default program configuration
+ * Program 1 - effect 1, Program 2 - effect 2, Program 3 - effect 3
+ */
 static bool_t Switchboard_Default_Config () {
     uint8_t i;
     bool_t status = FALSE;
@@ -195,7 +225,7 @@ static void LED_All_Off () {
 
 /*
  * LED control during normal operation
- * Turns on LEDs sequentially during program change, from LED_CFG_CONTINUOUS to LED_CFG_BLINK_6, at 500 ticks interval between each one
+ * Turns on LEDs sequentially after program change, from LED_CFG_CONTINUOUS to LED_CFG_BLINK_6, at 500 ticks interval between each one
  */
 static void LED_Control () {
     uint8_t i;
@@ -235,6 +265,7 @@ static void LED_Control () {
 
 /*
  * LED blinking control during program creation
+ * First effect - 1 blink, second effect - 2 blinks
  */
 static void LED_Control_Program_Creation () {
     uint8_t i;
@@ -270,7 +301,7 @@ static void LED_Control_Program_Creation () {
             if ((Switchboard.LedCount < SWBOARD_MAX_EFFECTS) && (Switchboard.ProgramCreate.Sequence[Switchboard.LedCount] != PRG_UNDEFINED)) {
                 Switchboard.LedStep = 1;
             } else {
-                SW_Timer_Init(&Switchboard.LedTimer, 1000);
+                SW_Timer_Init(&Switchboard.LedTimer, 2000);
                 Switchboard.LedStep++;
             }
         }
@@ -293,23 +324,23 @@ static void Switchboard_Button_Callback (uint8_t row, uint8_t column, Keypad_Tra
 
     if (status == KEYPAD_BTN_PRESSED) {
         if ((row == 0) && (column == 0)) {
-            Switchboard.ButtonFlag = 1;
+            Switchboard.ButtonFlag = BTN_1_PRESS;
         } else if ((row == 1) && (column == 0)) {
-            Switchboard.ButtonFlag = 2;
+            Switchboard.ButtonFlag = BTN_2_PRESS;
         } else if ((row == 2) && (column == 0)) {
-            Switchboard.ButtonFlag = 3;
+            Switchboard.ButtonFlag = BTN_3_PRESS;
         } else if ((row == 0) && (column == 1)) {
-            Switchboard.ButtonFlag = 4;
+            Switchboard.ButtonFlag = BTN_4_PRESS;
         }
     } else if (status == KEYPAD_BTN_KEPT_PRESSED) {
         if ((row == 0) && (column == 0)) {
-            Switchboard.ButtonFlag = 5;
+            Switchboard.ButtonFlag = BTN_1_LONG_PRESS;
         } else if ((row == 1) && (column == 0)) {
-            Switchboard.ButtonFlag = 6;
+            Switchboard.ButtonFlag = BTN_2_LONG_PRESS;
         } else if ((row == 2) && (column == 0)) {
-            Switchboard.ButtonFlag = 7;
+            Switchboard.ButtonFlag = BTN_3_LONG_PRESS;
         } else if ((row == 0) && (column == 1)) {
-            Switchboard.ButtonFlag = 8;
+            Switchboard.ButtonFlag = BTN_4_LONG_PRESS;
         }
     }
 }
@@ -348,9 +379,8 @@ static void Switchboard_Map_Signal_Route () {
     } else {
         Program.Switch[0].X = SW_IN_1;
 
-        for (i = 0; i < SWBOARD_MAX_EFFECTS; i++) {
+        for (i = 0; (i < SWBOARD_MAX_EFFECTS && Switchboard.ProgramCreate.Sequence[i] != PRG_UNDEFINED); i++) {
             switch (Switchboard.ProgramCreate.Sequence[i]) {
-            case PRG_UNDEFINED:
             default:
                 break;
             case PRG_EFF_1:
@@ -385,9 +415,9 @@ static void Switchboard_Map_Signal_Route () {
 }
 
 
-
-
 /*
+ * Switchboard_Program_Change
+ * Inits the crosspoint switch, open all switches and ground outputs, close desired switches, unground outputs and closes the crosspoint switch module
  * Must be continuously called until returns TRUE
  */
 static bool_t Switchboard_Program_Change () {
@@ -452,66 +482,94 @@ static bool_t Switchboard_Program_Change () {
 
 
 /*
+ * Switchboard_Program_Create
  * Standalone program creation: up to SWBOARD_MAX_EFFECTS effects can be arranged sequentially, using UP/DOWN/OK/CANCEL buttons
  * UP/DOWN: navigates between available effects
  * OK: insert current effect into the sequence. If pressed for more than X seconds, saves the program into nonvolatile memory and finishes the program creation
- * CANCEL: finishes the program creation without saving
- * A timeout is also used to finish the program creation, if the user doesn't press any button in X seconds
+ * CANCEL: Pressed for more than X seconds, finishes the program creation without saving
+ * A timeout is also used to finish the program creation, if the user doesn't press any button in Y seconds
  */
 static bool_t Switchboard_Program_Create () {
     bool_t finished = FALSE;
     uint8_t i;
+    Program_Effect_t effect_aux;
     Program_Effect_t last_effect;
 
     switch (Switchboard.ProgramCreate.Step) {
-    case 0:
+    case PRG_CRTE_INIT:
     default:
         Debug_Message("Program create\r\n", sizeof("Program create\r\n") - 1);
 
         SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
 
+        // initializes program creation variables, starting with all effects disabled
         Switchboard.ProgramCreate.SequenceIndex = 0;
         for (i = 0; i < SWBOARD_MAX_EFFECTS; i++) {
             Switchboard.ProgramCreate.Sequence[i] = PRG_UNDEFINED;
         }
         Switchboard.ProgramCreate.CurrentEffect = PRG_UNDEFINED;
         Switchboard_Map_Signal_Route();
+        for (i = 0; i < SWBOARD_LEDS; i++) {
+            Program.LED[i] = LED_CFG_OFF;
+        }
 
         LED_All_Off();
         Switchboard.LedStep = 0;
 
-        Switchboard.ProgramCreate.Step = 1;
+        Switchboard.ProgramCreate.Step = PRG_CRTE_INIT_LED;
         break;
-    case 1:
-        if (Switchboard_Program_Change()) {
-            Switchboard.ProgramCreate.Step = 2;
+    case PRG_CRTE_INIT_LED: // LED blinking
+        SW_Timer_Init(&Switchboard.LedTimer, 500);
+        LED_Change_Status(0, LED_ON);
+        LED_Change_Status(1, LED_ON);
+        LED_Change_Status(2, LED_ON);
+        LED_Change_Status(3, LED_ON);
+        LED_Change_Status(4, LED_ON);
+        LED_Change_Status(5, LED_ON);
+        Switchboard.ProgramCreate.Step = PRG_CRTE_INIT_LED_BLINK;
+        break;
+    case PRG_CRTE_INIT_LED_BLINK: // LED blinking
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            LED_All_Off();
+            Switchboard.ProgramCreate.Step = PRG_CRTE_PROGRAM_CHANGE;
         }
         break;
-    case 2:
-        switch (Switchboard.ButtonFlag) {
-        case 1: // OK
-            if (Switchboard.ProgramCreate.SequenceIndex < SWBOARD_MAX_EFFECTS) {
-                // only adds into the effects order if it isn't already there
-                if (Switchboard_Is_Effect_Available(Switchboard.ProgramCreate.CurrentEffect)) {
-                    Switchboard.ProgramCreate.Sequence[Switchboard.ProgramCreate.SequenceIndex] = Switchboard.ProgramCreate.CurrentEffect;
-                    Switchboard.ProgramCreate.SequenceIndex++;
+    case PRG_CRTE_PROGRAM_CHANGE:
+        if (Switchboard_Program_Change()) {
+            Switchboard.ProgramCreate.Step = PRG_CRTE_EXECUTING;
+        }
+        break;
+    case PRG_CRTE_EXECUTING:
+        LED_Control_Program_Creation();
 
-                    Debug_Message("Effect added\r\n", sizeof("Effect added\r\n") - 1);
-                }
+        switch (Switchboard.ButtonFlag) {
+        case BTN_1_PRESS: // OK
+            if ((Switchboard.ProgramCreate.SequenceIndex < SWBOARD_MAX_EFFECTS) && (Switchboard.ProgramCreate.CurrentEffect != PRG_UNDEFINED)) {
+                Switchboard.ProgramCreate.Sequence[Switchboard.ProgramCreate.SequenceIndex] = Switchboard.ProgramCreate.CurrentEffect;
+
+                // creates the LED configuration
+                // If CurrentEffect is PRG_EFF_2 (2) and is the second effect added (SequenceIndex == 1), so Program.LED[1] = LED_CFG_BLINK_2 (3)
+                Program.LED[Switchboard.ProgramCreate.CurrentEffect - 1] = Switchboard.ProgramCreate.SequenceIndex + 2;
+
+                Debug_Message("Effect added\r\n", sizeof("Effect added\r\n") - 1);
+
+                Switchboard.ProgramCreate.SequenceIndex++;
+                Switchboard.ProgramCreate.CurrentEffect = PRG_UNDEFINED;
             }
 
             SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
             break;
-        case 2: // down
-            i = Switchboard.ProgramCreate.CurrentEffect;
+        case BTN_2_PRESS: // down
+            effect_aux = Switchboard.ProgramCreate.CurrentEffect;
             last_effect = Switchboard.ProgramCreate.CurrentEffect;
             // checks if any downward effect is available
-            while (Switchboard.ProgramCreate.CurrentEffect > PRG_EFF_1) {
-                i--;
-                if (Switchboard_Is_Effect_Available(i)) {
-                    Switchboard.ProgramCreate.CurrentEffect = i;
+            while (effect_aux > PRG_EFF_1) {
+                effect_aux--;
+                if (Switchboard_Is_Effect_Available(effect_aux)) {
+                    Switchboard.ProgramCreate.CurrentEffect = effect_aux;
+                    Switchboard.ProgramCreate.Sequence[Switchboard.ProgramCreate.SequenceIndex] = effect_aux;
                     Switchboard_Map_Signal_Route();
-                    Switchboard.ProgramCreate.Step = 1;
+                    Switchboard.ProgramCreate.Step = PRG_CRTE_PROGRAM_CHANGE;
                     break;  // breaks the loop
                 }
             }
@@ -525,16 +583,17 @@ static bool_t Switchboard_Program_Create () {
 
             SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
             break;
-        case 3: // up
-            i = Switchboard.ProgramCreate.CurrentEffect;
+        case BTN_3_PRESS: // up
+            effect_aux = Switchboard.ProgramCreate.CurrentEffect;
             last_effect = Switchboard.ProgramCreate.CurrentEffect;
             // checks if any upward effect is available
-            while (Switchboard.ProgramCreate.CurrentEffect < SWBOARD_MAX_EFFECTS) {
-                i++;
-                if (Switchboard_Is_Effect_Available(i)) {
-                    Switchboard.ProgramCreate.CurrentEffect = i;
+            while (effect_aux < SWBOARD_MAX_EFFECTS) {
+                effect_aux++;
+                if (Switchboard_Is_Effect_Available(effect_aux)) {
+                    Switchboard.ProgramCreate.CurrentEffect = effect_aux;
+                    Switchboard.ProgramCreate.Sequence[Switchboard.ProgramCreate.SequenceIndex] = effect_aux;
                     Switchboard_Map_Signal_Route();
-                    Switchboard.ProgramCreate.Step = 1;
+                    Switchboard.ProgramCreate.Step = PRG_CRTE_PROGRAM_CHANGE;
                     break;  // breaks the loop
                 }
             }
@@ -548,19 +607,16 @@ static bool_t Switchboard_Program_Create () {
 
             SW_Timer_Init(&Switchboard.ProgramCreate.Timer, 30000);
             break;
-        case 5: // OK - kept pressed
-#warning "To do - save in memory"
+        case BTN_1_LONG_PRESS: // OK - kept pressed
+            strcpy(Program.Name, "Program ");
+            Program.Name[8] = '1' + Switchboard.CurrentProgram;
+            Program.Name[9] = 0;
 
-            Debug_Message("Program creation finished\r\n", sizeof("Program creation finished\r\n") - 1);
-            Switchboard.ProgramCreate.Step = 0;
-            finished = 1;
+            Switchboard.ProgramCreate.Step = PRG_CRTE_SAVE;
             break;
-        case 8: // cancel - kept pressed
-#warning "To do - read original from memory"
-
+        case BTN_4_LONG_PRESS: // cancel - kept pressed - the original program configuration will be read back from memory in Switchboard_Task
             Debug_Message("Program creation cancelled\r\n", sizeof("Program creation cancelled\r\n") - 1);
-            Switchboard.ProgramCreate.Step = 0;
-            finished = 1;
+            Switchboard.ProgramCreate.Step = PRG_CRTE_CANCEL_LED;
             break;
         }
         Switchboard.ButtonFlag = 0;
@@ -570,8 +626,54 @@ static bool_t Switchboard_Program_Create () {
 #warning "To do - save in memory OR NOT"
 
             Debug_Message("Program creation timeout\r\n", sizeof("Program creation timeout\r\n") - 1);
-            Switchboard.ProgramCreate.Step = 0;
-            finished = 1;
+            Switchboard.ProgramCreate.Step = PRG_CRTE_CANCEL_LED;
+        }
+        break;
+    case PRG_CRTE_SAVE:
+        if (Memory_Write_Data(SWBOARD_PROGRAM_FRAM_ADDR(Switchboard.CurrentProgram), (uint8_t *) &Program, SWBOARD_PROGRAM_SIZE)) {
+            Debug_Message("Program creation finished\r\n", sizeof("Program creation finished\r\n") - 1);
+            Switchboard.ProgramCreate.Step = PRG_CRTE_OK_LED;
+        }
+        break;
+    case PRG_CRTE_OK_LED: // LED blinking - OK
+        SW_Timer_Init(&Switchboard.LedTimer, 100);
+        LED_All_Off();
+        Switchboard.LedBlinkCounter = 0;
+        Switchboard.ProgramCreate.Step = PRG_CRTE_OK_LED_BLINK;
+        break;
+    case PRG_CRTE_OK_LED_BLINK: // LED blinking
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            SW_Timer_Init(&Switchboard.LedTimer, 100);
+            LED_Change_Status(Switchboard.LedBlinkCounter, LED_ON);
+            Switchboard.LedBlinkCounter++;
+            if (Switchboard.LedBlinkCounter >= 6) {
+                LED_All_Off();
+                Switchboard.ProgramCreate.Step = PRG_CRTE_INIT;
+                finished = 1;
+            }
+        }
+        break;
+    case PRG_CRTE_CANCEL_LED: // LED blinking - cancel
+        SW_Timer_Init(&Switchboard.LedTimer, 100);
+        LED_Change_Status(0, LED_ON);
+        LED_Change_Status(1, LED_ON);
+        LED_Change_Status(2, LED_ON);
+        LED_Change_Status(3, LED_ON);
+        LED_Change_Status(4, LED_ON);
+        LED_Change_Status(5, LED_ON);
+        Switchboard.LedBlinkCounter = 5;
+        Switchboard.ProgramCreate.Step = PRG_CRTE_CANCEL_LED_BLINK;
+        break;
+    case PRG_CRTE_CANCEL_LED_BLINK: // LED blinking
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            SW_Timer_Init(&Switchboard.LedTimer, 100);
+            LED_Change_Status(Switchboard.LedBlinkCounter, LED_OFF);
+            if (Switchboard.LedBlinkCounter == 0) {
+                Switchboard.ProgramCreate.Step = PRG_CRTE_INIT;
+                finished = 1;
+            } else {
+                Switchboard.LedBlinkCounter--;
+            }
         }
         break;
     }
@@ -580,6 +682,73 @@ static bool_t Switchboard_Program_Create () {
 }
 
 
+
+/*
+ * Switchboard_Init
+ * Must be continuously called until returns TRUE
+ */
+static bool_t Switchboard_Init () {
+    Keypad_Button_Config_t config;
+    bool_t status = FALSE;
+
+    switch (Switchboard.InitStatus) {
+    case 0:
+        config.Mode = KEYPAD_BTN_PRESSED_ONLY;
+        config.Type = KEYPAD_BTN_NORMALLY_CLOSED;
+        Keypad_Config_Button (0, 0, Switchboard_Button_Callback, config);
+        Keypad_Config_Button (1, 0, Switchboard_Button_Callback, config);
+        Keypad_Config_Button (2, 0, Switchboard_Button_Callback, config);
+        Keypad_Config_Button (0, 1, Switchboard_Button_Callback, config);
+
+        Switchboard.LedBlinkCounter = 0;
+        Switchboard.InitStatus++;
+        break;
+    case 1:
+        // reads what was the last program used to reload it
+        if (Memory_Read_Data(SWBOARD_CURR_PROGRAM_FRAM_ADDR, &Switchboard.CurrentProgram, 1)){
+            if (Switchboard.CurrentProgram >= SWBOARD_MAX_PROGRAMS) {
+                Switchboard.CurrentProgram = 0;
+            }
+            Switchboard.InitStatus++;
+        }
+        break;
+    case 2:
+        // reads the program configuration
+        if (Memory_Read_Data(SWBOARD_PROGRAM_FRAM_ADDR(Switchboard.CurrentProgram), (uint8_t *) &Program, SWBOARD_PROGRAM_SIZE)) {
+            Switchboard.InitStatus++;
+        }
+        break;
+    case 3: // LED blinking
+        SW_Timer_Init(&Switchboard.LedTimer, 100);
+        LED_Change_Status(Switchboard.LedBlinkCounter, LED_ON);
+        Switchboard.InitStatus++;
+        break;
+    case 4:  // LED blinking
+        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
+            LED_Change_Status(Switchboard.LedBlinkCounter, LED_OFF);
+            Switchboard.LedBlinkCounter++;
+            if (Switchboard.LedBlinkCounter >= 6) {
+                Switchboard.InitStatus++;
+            } else {
+                Switchboard.InitStatus = 3;
+            }
+        }
+        break;
+    case 5:
+        // reloads the last program
+        if (Switchboard_Program_Change()) {
+            Switchboard.LedStep = 0;
+            Debug_Message("Initialization finished\r\n", sizeof("Initialization finished\r\n") - 1);
+            status = TRUE;
+        }
+        break;
+    default:
+        Switchboard.InitStatus = 0;
+        break;
+    }
+
+    return (status);
+}
 
 
 /*
@@ -592,72 +761,41 @@ void Switchboard_Task () {
 
     switch (Switchboard.Status) {
     case 0:
-    default:
-        config.Mode = KEYPAD_BTN_PRESSED_ONLY;
-        config.Type = KEYPAD_BTN_NORMALLY_CLOSED;
-        Keypad_Config_Button (0, 0, Switchboard_Button_Callback, config);
-        Keypad_Config_Button (1, 0, Switchboard_Button_Callback, config);
-        Keypad_Config_Button (2, 0, Switchboard_Button_Callback, config);
-        Keypad_Config_Button (0, 1, Switchboard_Button_Callback, config);
-
-        Switchboard.InitCount = 0;
-        Switchboard.Status++;
-        break;
-    case 1:
-        SW_Timer_Init(&Switchboard.LedTimer, 100);
-        LED_Change_Status(Switchboard.InitCount, LED_ON);
-        Switchboard.Status++;
-        break;
-    case 2:
-        if (SW_Timer_Is_Timed_Out(&Switchboard.LedTimer)) {
-            LED_Change_Status(Switchboard.InitCount, LED_OFF);
-            Switchboard.InitCount++;
-            if (Switchboard.InitCount >= 6) {
-                Switchboard.Status++;
-
-                Debug_Message("Initialization finished\r\n", sizeof("Initialization finished\r\n") - 1);
-            } else {
-                Switchboard.Status = 1;
-            }
+        if (Switchboard_Init()) {
+            Switchboard.Status = 1;
         }
         break;
-    case 3:
+    case 1:
         LED_Control();
 
         switch (Switchboard.ButtonFlag) {
-        case 1:
-        case 2:
-        case 3:
-        case 4:
+        case BTN_1_PRESS:
+        case BTN_2_PRESS:
+        case BTN_3_PRESS:
+        case BTN_4_PRESS:
             Debug_Message("Button pressed!\r\n", sizeof("Button pressed!\r\n") - 1);
             Switchboard.CurrentProgram = Switchboard.ButtonFlag - 1;
             Switchboard.ButtonFlag = 0;
             Switchboard.Status = 6;
-#warning "To do - read program from memory"
             break;
-        case 5:
-        case 6:
-        case 7:
-        case 8:
+        case BTN_1_LONG_PRESS:
+        case BTN_2_LONG_PRESS:
+        case BTN_3_LONG_PRESS:
+        case BTN_4_LONG_PRESS:
             Switchboard.CurrentProgram = Switchboard.ButtonFlag - 5;
             Switchboard.ButtonFlag = 0;
             Switchboard.Status = 5;
             break;
         }
         break;
-    case 4:
-        if (Switchboard_Program_Change()) {
-            Switchboard.Status = 3;
-        }
-        break;
+
     case 5:
         if (Switchboard_Program_Create()) {
-            Switchboard.LedStep = 0;
-            Switchboard.Status = 3;
+            Switchboard.Status = 6;
         }
-        LED_Control_Program_Creation();
         break;
 
+    // Program change
     case 6:
         if (Memory_Read_Data(SWBOARD_PROGRAM_FRAM_ADDR(Switchboard.CurrentProgram), (uint8_t *) &Program, SWBOARD_PROGRAM_SIZE)) {
             Switchboard.Status++;
@@ -665,141 +803,20 @@ void Switchboard_Task () {
         break;
     case 7:
         if (Switchboard_Program_Change()) {
+            Switchboard.Status++;
+        }
+        break;
+    case 8:
+        if (Memory_Write_Data(SWBOARD_CURR_PROGRAM_FRAM_ADDR, &Switchboard.CurrentProgram, 1)) {
             Switchboard.LedStep = 0;
-            Switchboard.Status = 3;
+            Switchboard.Status = 1;
         }
         break;
-#if 0
-    case 8:
-        LED_All_Off();
-        for (i = 0; i < SWBOARD_LEDS; i++) {
-            if (Program.LED[i] != LED_CFG_OFF) {
-                LED_Change_Status(i, LED_ON);
-            }
-        }
-        Switchboard.Status = 3;
-        break;
-#endif
-#if 0
-#warning "Test"
 
-    case 6:
-        // Resets the current signal route
-        for (i = 0; i < SWBOARD_SIGNAL_ROUTE_MAX; i++) {
-            Program.Switch[i].X = 0xFF;
-            Program.Switch[i].Y = 0xFF;
-        }
-
-        switch (Switchboard.ButtonFlag) {
-        case 1:
-            Program.Switch[0].X = SW_IN_1;
-            Program.Switch[0].Y = TO_EFF_1;
-            Program.Switch[1].X = FROM_EFF_1;
-            Program.Switch[1].Y = SW_OUT_1;
-            break;
-        case 2:
-            Program.Switch[0].X = SW_IN_1;
-            Program.Switch[0].Y = TO_EFF_2;
-            Program.Switch[1].X = FROM_EFF_2;
-            Program.Switch[1].Y = SW_OUT_1;
-            break;
-        case 3:
-            Program.Switch[0].X = SW_IN_1;
-            Program.Switch[0].Y = TO_EFF_3;
-            Program.Switch[1].X = FROM_EFF_3;
-            Program.Switch[1].Y = SW_OUT_1;
-            break;
-        }
-        Switchboard.Status++;
-        break;
-    case 7:
-        if (Switchboard_Program_Change()) {
-            Switchboard.Status++;
-        }
-        break;
-    case 8:
-        switch (Switchboard.ButtonFlag) {
-        case 1:
-            LED_Change_Status(0, LED_ON);
-            LED_Change_Status(1, LED_OFF);
-            LED_Change_Status(2, LED_OFF);
-            break;
-        case 2:
-            LED_Change_Status(0, LED_OFF);
-            LED_Change_Status(1, LED_ON);
-            LED_Change_Status(2, LED_OFF);
-            break;
-        case 3:
-            LED_Change_Status(0, LED_OFF);
-            LED_Change_Status(1, LED_OFF);
-            LED_Change_Status(2, LED_ON);
-            break;
-        }
-
-        Switchboard.ButtonFlag = 0;
-        Switchboard.Status = 3;
-        break;
-#endif
-    case 9:
+    case 20:
         if (Switchboard_Default_Config()) {
-            Switchboard.Status = 3;
+            Switchboard.Status = 1;
         }
         break;
-#if 0
-#warning "Basic switching test"
-    case 6:
-        if (Output_Expander_Close() && Memory_Close()) {
-            Crosspoint_Switch_Init();
-            Crosspoint_Switch_Open_Switches();
-            switch (Switchboard.ButtonFlag) {
-            case 1:
-                Crosspoint_Switch_Set (SW_IN_1, TO_EFF_1, 1);
-                Crosspoint_Switch_Set (FROM_EFF_1, SW_OUT_1, 1);
-                break;
-            case 2:
-                Crosspoint_Switch_Set (SW_IN_1, TO_EFF_2, 1);
-                Crosspoint_Switch_Set (FROM_EFF_2, SW_OUT_1, 1);
-                break;
-            case 3:
-                Crosspoint_Switch_Set (SW_IN_1, TO_EFF_3, 1);
-                Crosspoint_Switch_Set (FROM_EFF_3, SW_OUT_1, 1);
-                break;
-            }
-            Switchboard.Status++;
-        }
-        break;
-    case 7:
-        if (Crosspoint_Switch_Close()) {
-            Output_Expander_Init();
-            Memory_Init();
-
-            switch (Switchboard.ButtonFlag) {
-            case 1:
-                Output_Expander_Pin(1, 0);
-                Output_Expander_Pin(2, 1);
-                Output_Expander_Pin(3, 1);
-                break;
-            case 2:
-                Output_Expander_Pin(1, 1);
-                Output_Expander_Pin(2, 0);
-                Output_Expander_Pin(3, 1);
-                break;
-            case 3:
-                Output_Expander_Pin(1, 1);
-                Output_Expander_Pin(2, 1);
-                Output_Expander_Pin(3, 0);
-                break;
-            }
-
-            Switchboard.ButtonFlag = 0;
-            Switchboard.Status = 3;
-        }
-        break;
-#endif
     }
-}
-
-#warning "Test"
-void Switchboard_Test () {
-    Switchboard.Status = 9;
 }

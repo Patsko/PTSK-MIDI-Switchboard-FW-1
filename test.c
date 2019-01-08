@@ -14,7 +14,7 @@
 #include "crosspoint_switch.h"
 #include "switchboard_app.h"
 
-
+#if 0
 struct {
 #if 0
     uint8_t UART_status;
@@ -45,6 +45,7 @@ struct {
     } APPLICATION;
 #endif
 } TEST;
+#endif
 
 #if 0
 char Message[] = "Loopback test!\r\n";
@@ -141,6 +142,7 @@ void UART_TEST () {
 }
 #endif
 
+#if 0
 void MEMORY_TEST () {
     uint8_t i;
     uint8_t data;
@@ -215,7 +217,7 @@ void MEMORY_TEST () {
         break;
     }
 }
-
+#endif
 
 #if 0
 // Timer test with blocking delay

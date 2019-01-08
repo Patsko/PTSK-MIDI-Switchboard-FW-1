@@ -17,9 +17,6 @@
 #include "debug.h"
 #include "switchboard_app.h"
 
-#warning "Test"
-#include "test.h"
-
 
 void main () {
     ZHAL_Init();
@@ -40,12 +37,6 @@ void main () {
         Crosspoint_Switch_Task();
         Switchboard_Task();
         Debug_Monitor_Task();
-
-        MEMORY_TEST();
-#if 0
-        TIMER_TEST();
-        APPLICATION_TEST();
-#endif
     }
 }
 

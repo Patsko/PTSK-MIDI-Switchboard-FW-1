@@ -56,7 +56,6 @@ void SW_Timer_Blocking_Delay_1ms (uint16_t ticks_to_wait) {
 
     // wait until final_tick is the same as ZHAL_Systick.Tick
     while (final_tick != ZHAL_Systick_Get_Tick()) {
-#warning "Add a watchdog reset here"
         ZHAL_Watchdog_Reset();
     }
 

@@ -288,31 +288,7 @@
 
 <!-- watch information -->
 <watch-elements>
-<watch-element expression="ZHAL_Callback_fp" />
-<watch-element expression="*T0CTL1" />
-<watch-element expression="TxCTL1_p" />
-<watch-element expression="*TxCTL1_p" />
-<watch-element expression="*IRQ0ENH" />
-<watch-element expression="IRQ0ENL" />
-<watch-element expression="*IRQCTL" />
-<watch-element expression="IRQxENL" />
-<watch-element expression="ZHAL_Systick" />
-<watch-element expression="*PxADDR_p" />
-<watch-element expression="*PxCTL_p" />
-<watch-element expression="ZHAL_UART_Tx_FIFO" />
-<watch-element expression="*ZHAL_UART_Tx_FIFO.Data" />
-<watch-element expression="U0TXD" />
-<watch-element expression="ZHAL_Callback_fp" />
-<watch-element expression="IRQ0" />
-<watch-element expression="ZHAL_UART_Rx_FIFO_Buffer" />
-<watch-element expression="ZHAL_UART_Rx_FIFO" />
-<watch-element expression="TEST.BytesReceived" />
-<watch-element expression="TEST.SPI_status" />
-<watch-element expression="i" />
-<watch-element expression="Memory" />
-<watch-element expression="ZHAL_SPI_Driver_Data" />
-<watch-element expression="Switchboard.Status" />
-<watch-element expression="Switchboard.DefaultConfig" />
+<watch-element expression="Switchboard" />
 <watch-element expression="Program" />
 </watch-elements>
 
@@ -321,7 +297,7 @@
 <breakpoint temporary="false" enabled="true" >
 <line-number>147</line-number>
 <pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\ZHAL\ZHAL\zhal_uart.c</pathname>
-<address>4120</address>
+<address>4097</address>
 <command></command>
 <preserve-type>0</preserve-type>
 </breakpoint>
@@ -340,16 +316,30 @@
 <preserve-type>0</preserve-type>
 </breakpoint>
 <breakpoint temporary="false" enabled="true" >
-<line-number>107</line-number>
+<line-number>341</line-number>
 <pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\switchboard_app.c</pathname>
-<address>13946</address>
+<address>14636</address>
 <command></command>
 <preserve-type>0</preserve-type>
 </breakpoint>
 <breakpoint temporary="false" enabled="true" >
-<line-number>124</line-number>
+<line-number>537</line-number>
 <pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\switchboard_app.c</pathname>
-<address>14064</address>
+<address>15889</address>
+<command></command>
+<preserve-type>0</preserve-type>
+</breakpoint>
+<breakpoint temporary="false" enabled="true" >
+<line-number>657</line-number>
+<pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\switchboard_app.c</pathname>
+<address>16749</address>
+<command></command>
+<preserve-type>0</preserve-type>
+</breakpoint>
+<breakpoint temporary="false" enabled="true" >
+<line-number>448</line-number>
+<pathname>D:\Eletrônica\Projetos\PTSK MIDI Switchboard\FW\PTSK-MIDI-Switchboard-FW-1\switchboard_app.c</pathname>
+<address>15382</address>
 <command></command>
 <preserve-type>0</preserve-type>
 </breakpoint>
