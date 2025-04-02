@@ -1,0 +1,3 @@
+[submodule "ZHAL"]
+	path = ZHAL
+	url = git@github.com:Patsko/PTSK-ZHAL.git
