@@ -15,7 +15,7 @@
 #include "output_expander.h"
 #include "crosspoint_switch.h"
 #include "memory.h"
-#include "keypad.h"
+#include "button.h"
 #include "switchboard_app.h"
 #include "debug.h"
 
@@ -320,26 +320,26 @@ static void LED_Control_Program_Creation () {
 
 
 
-static void Switchboard_Button_Callback (uint8_t row, uint8_t column, Keypad_Transition_t status) {
+static void Switchboard_Button_Callback (uint8_t button, Button_Transition_t status) {
 
-    if (status == KEYPAD_BTN_PRESSED) {
-        if ((row == 0) && (column == 0)) {
+    if (status == BUTTON_BTN_PRESSED) {
+        if (button == 0) {
             Switchboard.ButtonFlag = BTN_1_PRESS;
-        } else if ((row == 1) && (column == 0)) {
+        } else if (button == 1) {
             Switchboard.ButtonFlag = BTN_2_PRESS;
-        } else if ((row == 2) && (column == 0)) {
+        } else if (button == 2) {
             Switchboard.ButtonFlag = BTN_3_PRESS;
-        } else if ((row == 0) && (column == 1)) {
+        } else if (button == 3) {
             Switchboard.ButtonFlag = BTN_4_PRESS;
         }
-    } else if (status == KEYPAD_BTN_KEPT_PRESSED) {
-        if ((row == 0) && (column == 0)) {
+    } else if (status == BUTTON_BTN_KEPT_PRESSED) {
+        if (button == 0) {
             Switchboard.ButtonFlag = BTN_1_LONG_PRESS;
-        } else if ((row == 1) && (column == 0)) {
+        } else if (button == 1) {
             Switchboard.ButtonFlag = BTN_2_LONG_PRESS;
-        } else if ((row == 2) && (column == 0)) {
+        } else if (button == 2) {
             Switchboard.ButtonFlag = BTN_3_LONG_PRESS;
-        } else if ((row == 0) && (column == 1)) {
+        } else if (button == 3) {
             Switchboard.ButtonFlag = BTN_4_LONG_PRESS;
         }
     }
@@ -688,17 +688,17 @@ static bool_t Switchboard_Program_Create () {
  * Must be continuously called until returns TRUE
  */
 static bool_t Switchboard_Init () {
-    Keypad_Button_Config_t config;
+    Button_Config_t config;
     bool_t status = FALSE;
 
     switch (Switchboard.InitStatus) {
     case 0:
-        config.Mode = KEYPAD_BTN_PRESSED_ONLY;
-        config.Type = KEYPAD_BTN_NORMALLY_CLOSED;
-        Keypad_Config_Button (0, 0, Switchboard_Button_Callback, config);
-        Keypad_Config_Button (1, 0, Switchboard_Button_Callback, config);
-        Keypad_Config_Button (2, 0, Switchboard_Button_Callback, config);
-        Keypad_Config_Button (0, 1, Switchboard_Button_Callback, config);
+        config.Mode = BUTTON_BTN_PRESSED_ONLY;
+        config.Type = BUTTON_BTN_NORMALLY_CLOSED;
+        Button_Config (0, Switchboard_Button_Callback, config);
+        Button_Config (1, Switchboard_Button_Callback, config);
+        Button_Config (2, Switchboard_Button_Callback, config);
+        Button_Config (3, Switchboard_Button_Callback, config);
 
         Switchboard.LedBlinkCounter = 0;
         Switchboard.InitStatus++;
@@ -756,7 +756,6 @@ static bool_t Switchboard_Init () {
  * Must be called periodically from main application
  */
 void Switchboard_Task () {
-    Keypad_Button_Config_t config;
     uint8_t i;
 
     switch (Switchboard.Status) {
