@@ -1,4 +1,4 @@
-<project type="Executable" project-type="Standard" configuration="Debug" created-by="d:5.2.0:13120401" modified-by="d:5.2.0:13120401" ZDSII="ZDS - Z8 Encore! Family 5.2.2 (Build 15082502 with Patches 1,2, and 3)">
+<project type="Executable" project-type="Standard" configuration="Debug" created-by="d:5.2.0:13120401" modified-by="d:5.7:24082002" ZDSII="ZDSII - Z8 Encore! Family 5.7.0 (Build 24082201)">
 <cpu>Z8F2480XJ</cpu>
 
 <!-- file information -->
@@ -22,7 +22,12 @@
 <file filter-key="">.\test.c</file>
 <file filter-key="">.\debug.c</file>
 <file filter-key="">.\switchboard_app.c</file>
+<file filter-key="">.\button.c</file>
 </files>
+
+<!-- Related file information -->
+<related_files>
+</related_files>
 
 <!-- configuration information -->
 <configurations>
@@ -30,7 +35,7 @@
 <tools>
 <tool name="Assembler">
 <options>
-<option name="define" type="string" change-action="assemble">_Z8F2480XJ=1,_Z8ENCORE_XP_F1680_SERIES_24K=1,_SIMULATE=1,_Z8ENCORE_F1680=1</option>
+<option name="define" type="string" change-action="assemble">_Z8F2480XJ=1,_Z8ENCORE_XP_F1680_SERIES_24K=1,_SIMULATE=1,_NVDS_=1,_Z8ENCORE_F1680=1</option>
 <option name="include" type="string" change-action="assemble"></option>
 <option name="list" type="boolean" change-action="none">true</option>
 <option name="listmac" type="boolean" change-action="none">false</option>
@@ -48,12 +53,12 @@
 <option name="fastcall" type="boolean" change-action="compile">false</option>
 <option name="codegen" type="string" change-action="none">UserDefined</option>
 <option name="const" type="string" change-action="compile">RAM</option>
-<option name="define" type="string" change-action="compile">_Z8F2480XJ,_Z8ENCORE_XP_F1680_SERIES_24K,_SIMULATE,_Z8ENCORE_F1680</option>
+<option name="define" type="string" change-action="compile">_Z8F2480XJ,_Z8ENCORE_XP_F1680_SERIES_24K,_SIMULATE,_NVDS_,_Z8ENCORE_F1680</option>
 <option name="genprintf" type="boolean" change-action="compile">true</option>
 <option name="keepasm" type="boolean" change-action="none">false</option>
 <option name="keeplst" type="boolean" change-action="none">true</option>
 <option name="list" type="boolean" change-action="none">false</option>
-<option name="listinc" type="boolean" change-action="none">true</option>
+<option name="listinc" type="boolean" change-action="none">false</option>
 <option name="model" type="string" change-action="compile">L</option>
 <option name="optlink" type="boolean" change-action="compile">false</option>
 <option name="promote" type="boolean" change-action="compile">true</option>
@@ -63,7 +68,9 @@
 <option name="stdinc" type="string" change-action="compile"></option>
 <option name="usrinc" type="string" change-action="compile">ZHAL\ZHAL</option>
 <option name="watch" type="boolean" change-action="none">false</option>
-<option name="expmac" type="boolean" change-action="none">true</option>
+<option name="expmac" type="boolean" change-action="none">false</option>
+<option name="pagee" type="boolean" change-action="compile">false</option>
+<option name="del_uncalled" type="boolean" change-action="compile">false</option>
 </options>
 </tool>
 <tool name="Debugger">
@@ -73,6 +80,11 @@
 <option name="zemul_enableevents" type="boolean" change-action="none">false</option>
 <option name="zemul_brkonfull" type="boolean" change-action="none">false</option>
 <option name="usepageerase" type="boolean" change-action="none">true</option>
+<option name="current_samplingmode" type="string" change-action="none">demand</option>
+<option name="current_powermode" type="string" change-action="none">high</option>
+<option name="current_lowthreshold" type="string" change-action="none"></option>
+<option name="current_highhreshold" type="string" change-action="none"></option>
+<option name="app_stopsingaling" type="string" change-action="none">None</option>
 </options>
 </tool>
 <tool name="FlashProgrammer">
@@ -98,6 +110,8 @@
 </tool>
 <tool name="General">
 <options>
+<option name="family" type="string" change-action="build"></option>
+<option name="cpu" type="string" change-action="build">Z8F2480XJ</option>
 <option name="warn" type="boolean" change-action="none">true</option>
 <option name="debug" type="boolean" change-action="assemble">true</option>
 <option name="debugcache" type="boolean" change-action="none">true</option>
@@ -121,17 +135,20 @@
 <option name="linkctlfile" type="string" change-action="build"></option>
 <option name="map" type="boolean" change-action="none">true</option>
 <option name="maxhexlen" type="integer" change-action="build">64</option>
-<option name="nvds" type="string" change-action="build">000000-00007F</option>
+<option name="nvds" type="string" change-action="build">00-7F</option>
+<option name="nvdsinuse" type="boolean" change-action="build">true</option>
 <option name="objlibmods" type="string" change-action="build"></option>
 <option name="of" type="string" change-action="build">Debug\MIDI_Switchboard</option>
 <option name="padhex" type="boolean" change-action="build">false</option>
 <option name="pram" type="string" change-action="build">E000-E3FF</option>
 <option name="praminuse" type="boolean" change-action="build">true</option>
 <option name="quiet" type="boolean" change-action="none">false</option>
-<option name="rdata" type="string" change-action="build">020-0FF</option>
+<option name="rdata" type="string" change-action="build">000-0DF</option>
+<option name="page_e" type="string" change-action="build">E00-EFF</option>
 <option name="relist" type="boolean" change-action="build">false</option>
-<option name="rom" type="string" change-action="build">0000-5FFF</option>
+<option name="rom" type="string" change-action="build">00-4FFF</option>
 <option name="sort" type="string" change-action="none">NAME</option>
+<option name="sortorder" type="string" change-action="none">ASCENDING</option>
 <option name="startuptype" type="string" change-action="build">Standard</option>
 <option name="startuplnkcmds" type="boolean" change-action="build">true</option>
 <option name="undefisfatal" type="boolean" change-action="none">true</option>
@@ -140,6 +157,7 @@
 <option name="warnisfatal" type="boolean" change-action="none">false</option>
 <option name="warnoverlap" type="boolean" change-action="none">true</option>
 <option name="xref" type="boolean" change-action="none">true</option>
+<option name="suppresswarnings" type="string" change-action="build"></option>
 </options>
 </tool>
 <tool name="Middleware">
@@ -193,6 +211,8 @@
 <option name="usrinc" type="string" change-action="compile"></option>
 <option name="watch" type="boolean" change-action="none">false</option>
 <option name="expmac" type="boolean" change-action="none">true</option>
+<option name="pagee" type="boolean" change-action="compile">false</option>
+<option name="del_uncalled" type="boolean" change-action="compile">false</option>
 </options>
 </tool>
 <tool name="Debugger">
@@ -202,6 +222,11 @@
 <option name="zemul_enableevents" type="boolean" change-action="none">false</option>
 <option name="zemul_brkonfull" type="boolean" change-action="none">false</option>
 <option name="usepageerase" type="boolean" change-action="none">true</option>
+<option name="current_samplingmode" type="string" change-action="none">demand</option>
+<option name="current_powermode" type="string" change-action="none">high</option>
+<option name="current_lowthreshold" type="string" change-action="none"></option>
+<option name="current_highhreshold" type="string" change-action="none"></option>
+<option name="app_stopsingaling" type="string" change-action="none">None</option>
 </options>
 </tool>
 <tool name="FlashProgrammer">
@@ -227,6 +252,8 @@
 </tool>
 <tool name="General">
 <options>
+<option name="family" type="string" change-action="build"></option>
+<option name="cpu" type="string" change-action="build">Z8F2480XJ</option>
 <option name="warn" type="boolean" change-action="none">true</option>
 <option name="debug" type="boolean" change-action="assemble">false</option>
 <option name="debugcache" type="boolean" change-action="none">false</option>
@@ -251,16 +278,19 @@
 <option name="map" type="boolean" change-action="none">true</option>
 <option name="maxhexlen" type="integer" change-action="build">64</option>
 <option name="nvds" type="string" change-action="build">000000-00007F</option>
+<option name="nvdsinuse" type="boolean" change-action="build">false</option>
 <option name="objlibmods" type="string" change-action="build"></option>
 <option name="of" type="string" change-action="build">.\Release\Switchboard_test</option>
 <option name="padhex" type="boolean" change-action="build">false</option>
 <option name="pram" type="string" change-action="build">E000-E3FF</option>
 <option name="praminuse" type="boolean" change-action="build">true</option>
 <option name="quiet" type="boolean" change-action="none">false</option>
-<option name="rdata" type="string" change-action="build">020-0FF</option>
+<option name="rdata" type="string" change-action="build">00-DF</option>
+<option name="page_e" type="string" change-action="build">E00-EFF</option>
 <option name="relist" type="boolean" change-action="build">false</option>
 <option name="rom" type="string" change-action="build">0000-5FFF</option>
 <option name="sort" type="string" change-action="none">name</option>
+<option name="sortorder" type="string" change-action="none">ascending</option>
 <option name="startuptype" type="string" change-action="build">Standard</option>
 <option name="startuplnkcmds" type="boolean" change-action="build">true</option>
 <option name="undefisfatal" type="boolean" change-action="none">true</option>
@@ -269,6 +299,7 @@
 <option name="warnisfatal" type="boolean" change-action="none">false</option>
 <option name="warnoverlap" type="boolean" change-action="none">true</option>
 <option name="xref" type="boolean" change-action="none">true</option>
+<option name="suppresswarnings" type="string" change-action="build"></option>
 </options>
 </tool>
 <tool name="Middleware">
@@ -288,8 +319,8 @@
 
 <!-- watch information -->
 <watch-elements>
-<watch-element expression="Switchboard" />
-<watch-element expression="Program" />
+<watch-element expression="Switchboard" hexformat="true" />
+<watch-element expression="Program" hexformat="true" />
 </watch-elements>
 
 <!-- breakpoint information -->
@@ -344,5 +375,9 @@
 <preserve-type>0</preserve-type>
 </breakpoint>
 </breakpoints>
+
+<!-- trace TS flags -->
+<TraceTSPoints>
+</TraceTSPoints>
 
 </project>

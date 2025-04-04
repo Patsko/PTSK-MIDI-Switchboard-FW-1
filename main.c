@@ -12,7 +12,7 @@
 #include "sw_timer.h"
 #include "output_expander.h"
 #include "memory.h"
-#include "keypad.h"
+#include "button.h"
 #include "crosspoint_switch.h"
 #include "debug.h"
 #include "switchboard_app.h"
@@ -33,7 +33,7 @@ void main () {
 
         Output_Expander_Task();
         Memory_Task();
-        Keypad_Task();
+        Button_Task();
         Crosspoint_Switch_Task();
         Switchboard_Task();
         Debug_Monitor_Task();
